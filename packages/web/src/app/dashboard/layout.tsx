@@ -9,13 +9,13 @@ import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/dashboard', icon: DashboardIcon },
-  { label: 'Orders', href: '/orders', icon: OrdersIcon },
-  { label: 'Menu', href: '/menu', icon: MenuIcon },
-  { label: 'Categories', href: '/categories', icon: CategoriesIcon },
-  { label: 'Tables', href: '/tables', icon: TablesIcon },
-  { label: 'QR Codes', href: '/qr', icon: QRIcon },
-  { label: 'Analytics', href: '/analytics', icon: AnalyticsIcon },
-  { label: 'Settings', href: '/settings', icon: SettingsIcon },
+  { label: 'Orders', href: '/dashboard/orders', icon: OrdersIcon },
+  { label: 'Menu', href: '/dashboard/menu', icon: MenuIcon },
+  { label: 'Categories', href: '/dashboard/categories', icon: CategoriesIcon },
+  { label: 'Tables', href: '/dashboard/tables', icon: TablesIcon },
+  { label: 'QR Codes', href: '/dashboard/qr', icon: QRIcon },
+  { label: 'Analytics', href: '/dashboard/analytics', icon: AnalyticsIcon },
+  { label: 'Settings', href: '/dashboard/settings', icon: SettingsIcon },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
