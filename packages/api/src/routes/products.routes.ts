@@ -5,7 +5,7 @@ import { authenticate } from '../middleware/auth';
 import { requireTenant, TenantRequest } from '../middleware/tenantContext';
 import { validate } from '../middleware/validate';
 import { AppError } from '../utils/errors';
-import { apiResponse } from '../utils/response';
+import { sendSuccess } from '../utils/apiResponse';
 import { slugify, uniqueSlug } from '../utils/slug';
 
 const router = Router({ mergeParams: true });
@@ -68,7 +68,7 @@ router.get('/', allowRead, async (req, res, next) => {
       tagAssignments: undefined,
     }));
 
-    res.json(apiResponse(transformedProducts));
+    sendSuccess(res, transformedProducts);
   } catch (err) {
     next(err);
   }
@@ -81,7 +81,7 @@ router.get('/', allowRead, async (req, res, next) => {
 router.get('/:id', allowRead, async (req, res, next) => {
   try {
     const { restaurantId } = req as TenantRequest;
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const product = await prisma.product.findFirst({
       where: { id, restaurantId },
@@ -105,7 +105,7 @@ router.get('/:id', allowRead, async (req, res, next) => {
       tagAssignments: undefined,
     };
 
-    res.json(apiResponse(transformedProduct));
+    sendSuccess(res, transformedProduct);
   } catch (err) {
     next(err);
   }
@@ -170,7 +170,7 @@ router.post(
         return newProduct;
       });
 
-      res.status(201).json(apiResponse(product));
+      sendSuccess(res, product, 201);
     } catch (err) {
       next(err);
     }
@@ -235,7 +235,7 @@ router.put(
         return updated;
       });
 
-      res.json(apiResponse(product));
+      sendSuccess(res, product);
     } catch (err) {
       next(err);
     }
@@ -269,7 +269,7 @@ router.patch(
         data: { isAvailable },
       });
 
-      res.json(apiResponse(product));
+      sendSuccess(res, product);
     } catch (err) {
       next(err);
     }

@@ -5,7 +5,7 @@ import { authenticate } from '../middleware/auth';
 import { requireTenant, TenantRequest } from '../middleware/tenantContext';
 import { validate } from '../middleware/validate';
 import { AppError } from '../utils/errors';
-import { apiResponse } from '../utils/response';
+import { sendSuccess } from '../utils/apiResponse';
 
 const router = Router({ mergeParams: true });
 
@@ -39,7 +39,7 @@ router.get('/', allowRead, async (req, res, next) => {
       orderBy: { sortOrder: 'asc' },
     });
 
-    res.json(apiResponse(categories));
+    sendSuccess(res, categories);
   } catch (err) {
     next(err);
   }
@@ -65,7 +65,7 @@ router.post(
         },
       });
 
-      res.status(201).json(apiResponse(category));
+      sendSuccess(res, category, 201);
     } catch (err) {
       next(err);
     }
@@ -100,7 +100,7 @@ router.put(
         data,
       });
 
-      res.json(apiResponse(category));
+      sendSuccess(res, category);
     } catch (err) {
       next(err);
     }
