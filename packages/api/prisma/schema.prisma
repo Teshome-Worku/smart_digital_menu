@@ -43,6 +43,7 @@ model User {
 
   memberships      RestaurantMembership[]
   ownedRestaurants Restaurant[]           @relation("RestaurantOwner")
+  customerSessions CustomerSession[]
 
   @@map("users")
 }
@@ -63,9 +64,11 @@ model Restaurant {
 
   owner       User                   @relation("RestaurantOwner", fields: [ownerId], references: [id])
   memberships RestaurantMembership[]
-  categories  Category[]
-  products    Product[]
-  productTags ProductTag[]
+  categories       Category[]
+  products         Product[]
+  productTags      ProductTag[]
+  tables           RestaurantTable[]
+  customerSessions CustomerSession[]
 
   @@index([slug])
   @@index([ownerId])
@@ -187,4 +190,41 @@ model ProductModifier {
 
   @@index([groupId])
   @@map("product_modifiers")
+}
+
+// ─── Table & Context Models ──────────────────────────────
+
+model RestaurantTable {
+  id           String   @id @default(cuid())
+  restaurantId String
+  name         String
+  number       Int
+  qrToken      String   @unique
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  sessions   CustomerSession[]
+
+  @@unique([restaurantId, number])
+  @@index([restaurantId])
+  @@map("restaurant_tables")
+}
+
+model CustomerSession {
+  id           String   @id @default(cuid())
+  restaurantId String
+  tableId      String
+  userId       String?  // Nullable for anonymous guests
+  sessionToken String   @unique
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  table      RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  user       User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId])
+  @@index([tableId])
+  @@map("customer_sessions")
 }

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -51,6 +52,24 @@ async function main() {
     },
   });
   console.log(`  ✅ Membership: OWNER`);
+
+  // Create demo table
+  const table = await prisma.restaurantTable.upsert({
+    where: {
+      restaurantId_number: {
+        restaurantId: restaurant.id,
+        number: 1,
+      },
+    },
+    update: {},
+    create: {
+      restaurantId: restaurant.id,
+      name: 'Table 1',
+      number: 1,
+      qrToken: crypto.randomBytes(32).toString('hex'),
+    },
+  });
+  console.log(`  ✅ Table: ${table.name} (QR Token: ${table.qrToken})`);
 
   console.log('\n✨ Seed completed!\n');
   console.log('  Demo credentials:');
