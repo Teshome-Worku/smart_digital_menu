@@ -82,3 +82,82 @@ export interface ImageUploadResult {
   width: number;
   height: number;
 }
+
+// ─── Menu: Category ──────────────────────────────────────
+export interface CategoryDto {
+  id: string;
+  restaurantId: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {}
+
+// ─── Menu: Product Modifiers ─────────────────────────────
+export interface ProductModifierDto {
+  id: string;
+  groupId: string;
+  name: string;
+  priceDelta: number;
+  isAvailable: boolean;
+}
+
+export interface ProductModifierGroupDto {
+  id: string;
+  productId: string;
+  name: string;
+  required: boolean;
+  minSelections: number;
+  maxSelections: number | null;
+  modifiers: ProductModifierDto[];
+}
+
+// ─── Menu: Product ───────────────────────────────────────
+export interface ProductTagDto {
+  id: string;
+  name: string;
+}
+
+export interface ProductDto {
+  id: string;
+  restaurantId: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  imageUrl: string | null;
+  price: number;
+  isAvailable: boolean;
+  isFeatured: boolean;
+  sortOrder: number;
+  createdAt: string;
+  tags?: ProductTagDto[];
+  modifierGroups?: ProductModifierGroupDto[];
+}
+
+export interface CreateProductRequest {
+  categoryId: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  price: number;
+  isAvailable?: boolean;
+  isFeatured?: boolean;
+  sortOrder?: number;
+  tags?: string[]; // Array of tag names
+}
+
+export interface UpdateProductRequest extends Partial<CreateProductRequest> {}
+

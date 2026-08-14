@@ -63,6 +63,9 @@ model Restaurant {
 
   owner       User                   @relation("RestaurantOwner", fields: [ownerId], references: [id])
   memberships RestaurantMembership[]
+  categories  Category[]
+  products    Product[]
+  productTags ProductTag[]
 
   @@index([slug])
   @@index([ownerId])

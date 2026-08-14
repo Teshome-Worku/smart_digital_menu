@@ -7,6 +7,8 @@ import { validate } from '../middleware/validate';
 import { AppError } from '../utils/errors';
 import { sendSuccess } from '../utils/apiResponse';
 import { slugify, uniqueSlug } from '../utils/slug';
+import categoriesRouter from './categories.routes';
+import productsRouter from './products.routes';
 
 const router = Router();
 
@@ -131,5 +133,10 @@ router.put(
     }
   },
 );
+
+// ─── Sub-routers ─────────────────────────────────────────
+
+router.use('/:restaurantId/categories', categoriesRouter);
+router.use('/:restaurantId/products', productsRouter);
 
 export default router;
