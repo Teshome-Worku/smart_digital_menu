@@ -161,3 +161,44 @@ export interface CreateProductRequest {
 
 export interface UpdateProductRequest extends Partial<CreateProductRequest> {}
 
+// ─── Customer View ───────────────────────────────────────
+export interface PublicRestaurantDto {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+  currency: string;
+}
+
+export interface CustomerSessionDto {
+  sessionToken: string;
+  restaurantId: string;
+  tableId: string;
+  tableName: string;
+  tableNumber: number;
+  restaurantSlug: string;
+  expiresAt: string;
+}
+
+export interface PublicCategoryDto {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+export interface PublicProductDto {
+  id: string;
+  categoryId: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  price: number;
+  isAvailable: boolean;
+  isFeatured: boolean;
+  tags: string[];
+  modifierGroups?: ProductModifierGroupDto[];
+}
+
+
