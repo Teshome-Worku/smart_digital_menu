@@ -84,3 +84,104 @@ model RestaurantMembership {
   @@index([restaurantId])
   @@map("restaurant_memberships")
 }
+
+// ─── Menu Models ─────────────────────────────────────────
+
+model Category {
+  id           String   @id @default(cuid())
+  restaurantId String
+  name         String
+  description  String?
+  imageUrl     String?
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  products   Product[]
+
+  @@index([restaurantId])
+  @@map("categories")
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  restaurantId String
+  categoryId   String
+  name         String
+  slug         String
+  description  String?
+  imageUrl     String?
+  price        Float
+  isAvailable  Boolean  @default(true)
+  isFeatured   Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  tagAssignments ProductTagAssignment[]
+  modifierGroups ProductModifierGroup[]
+
+  @@unique([restaurantId, slug])
+  @@index([restaurantId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductTag {
+  id           String   @id @default(cuid())
+  restaurantId String
+  name         String
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  assignments ProductTagAssignment[]
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
+  @@map("product_tags")
+}
+
+model ProductTagAssignment {
+  productId String
+  tagId     String
+
+  product Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     ProductTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([productId])
+  @@index([tagId])
+  @@map("product_tag_assignments")
+}
+
+model ProductModifierGroup {
+  id            String  @id @default(cuid())
+  productId     String
+  name          String
+  required      Boolean @default(false)
+  minSelections Int     @default(0)
+  maxSelections Int?
+
+  product   Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  modifiers ProductModifier[]
+
+  @@index([productId])
+  @@map("product_modifier_groups")
+}
+
+model ProductModifier {
+  id          String  @id @default(cuid())
+  groupId     String
+  name        String
+  priceDelta  Float   @default(0)
+  isAvailable Boolean @default(true)
+
+  group ProductModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("product_modifiers")
+}
