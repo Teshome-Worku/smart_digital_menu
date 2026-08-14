@@ -23,7 +23,8 @@ export function requireTenant(...allowedRoles: Role[]) {
         throw AppError.unauthorized('Authentication required');
       }
 
-      const restaurantId = req.params.restaurantId;
+      const param = req.params.restaurantId;
+      const restaurantId = Array.isArray(param) ? param[0] : param;
       if (!restaurantId) {
         throw AppError.badRequest('Restaurant ID is required');
       }

@@ -8,13 +8,15 @@ export interface JwtPayload {
 
 export function signAccessToken(userId: string): string {
   return jwt.sign({ userId, type: 'access' } satisfies JwtPayload, env.JWT_ACCESS_SECRET, {
-    expiresIn: env.JWT_ACCESS_EXPIRES_IN,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expiresIn: env.JWT_ACCESS_EXPIRES_IN as any,
   });
 }
 
 export function signRefreshToken(userId: string): string {
   return jwt.sign({ userId, type: 'refresh' } satisfies JwtPayload, env.JWT_REFRESH_SECRET, {
-    expiresIn: env.JWT_REFRESH_EXPIRES_IN,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN as any,
   });
 }
 
