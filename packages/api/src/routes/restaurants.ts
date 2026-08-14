@@ -9,6 +9,7 @@ import { sendSuccess } from '../utils/apiResponse';
 import { slugify, uniqueSlug } from '../utils/slug';
 import categoriesRouter from './categories.routes';
 import productsRouter from './products.routes';
+import ordersRouter from './orders.routes';
 
 const router = Router();
 
@@ -138,5 +139,6 @@ router.put(
 
 router.use('/:restaurantId/categories', categoriesRouter);
 router.use('/:restaurantId/products', productsRouter);
+router.use('/:restaurantId/orders', ordersRouter);
 
 export default router;
