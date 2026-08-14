@@ -201,4 +201,61 @@ export interface PublicProductDto {
   modifierGroups?: ProductModifierGroupDto[];
 }
 
+// ─── Phase 4: Order Models & DTOs ────────────────────────
 
+export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+
+// Customer Checkout Payload
+export interface CreateOrderItemModifierRequest {
+  modifierId: string;
+}
+
+export interface CreateOrderItemRequest {
+  productId: string;
+  quantity: number;
+  notes?: string;
+  modifiers: CreateOrderItemModifierRequest[];
+}
+
+export interface CreateOrderRequest {
+  items: CreateOrderItemRequest[];
+  notes?: string;
+}
+
+// Order View DTOs
+export interface OrderItemModifierDto {
+  id: string;
+  modifierId: string;
+  modifierNameSnapshot: string;
+  priceDeltaSnapshot: number;
+}
+
+export interface OrderItemDto {
+  id: string;
+  productId: string;
+  productNameSnapshot: string;
+  unitPriceSnapshot: number;
+  quantity: number;
+  notes?: string;
+  modifiers: OrderItemModifierDto[];
+}
+
+export interface OrderDto {
+  id: string;
+  restaurantId: string;
+  tableId: string;
+  customerSessionId: string;
+  orderNumber: number;
+  status: OrderStatus;
+  subtotal: number;
+  total: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  items: OrderItemDto[];
+  tableName?: string; // Enhanced field for dashboard
+}
+
+export interface UpdateOrderStatusRequest {
+  status: OrderStatus;
+}
