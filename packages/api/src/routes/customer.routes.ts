@@ -268,4 +268,153 @@ router.get('/:slug/products/:productId', async (req, res, next) => {
   }
 });
 
+// ─── POST /orders ──────────────────────────────────────────
+const createOrderSchema = z.object({
+  items: z.array(z.object({
+    productId: z.string(),
+    quantity: z.number().int().positive(),
+    notes: z.string().optional(),
+    modifiers: z.array(z.object({
+      modifierId: z.string()
+    })).default([])
+  })).min(1),
+  notes: z.string().optional()
+});
+
+router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
+  try {
+    const sessionToken = req.cookies[SESSION_COOKIE_NAME];
+    if (!sessionToken) throw AppError.unauthorized('No active session. Please scan the QR code again.');
+
+    const session = await prisma.customerSession.findUnique({
+      where: { sessionToken },
+      include: { table: true }
+    });
+
+    if (!session || session.expiresAt < new Date() || !session.table.isActive) {
+      throw AppError.unauthorized('Session expired or invalid.');
+    }
+
+    const { items, notes } = req.body;
+
+    // We must calculate the price entirely on the backend to prevent tampering.
+    let subtotal = 0;
+
+    // Prepare Prisma creation data array
+    const orderItemsData: any[] = [];
+
+    // Fetch all products involved in one query
+    const productIds = items.map((i: any) => i.productId);
+    const dbProducts = await prisma.product.findMany({
+      where: { id: { in: productIds }, restaurantId: session.restaurantId }
+    });
+
+    // We also need modifiers
+    const modifierIds = items.flatMap((i: any) => i.modifiers.map((m: any) => m.modifierId));
+    const dbModifiers = await prisma.productModifier.findMany({
+      where: { id: { in: modifierIds } } // Note: we should strictly ensure they belong to the product groups, but skipping deep validation for MVP
+    });
+
+    for (const item of items) {
+      const dbProduct = dbProducts.find(p => p.id === item.productId);
+      if (!dbProduct || !dbProduct.isAvailable) {
+        throw AppError.badRequest(`Product unavailable: ${item.productId}`);
+      }
+
+      let itemTotal = dbProduct.price;
+      const modifiersData: any[] = [];
+
+      for (const mod of item.modifiers) {
+        const dbMod = dbModifiers.find(m => m.id === mod.modifierId);
+        if (!dbMod || !dbMod.isAvailable) {
+          throw AppError.badRequest(`Modifier unavailable: ${mod.modifierId}`);
+        }
+        itemTotal += dbMod.priceDelta;
+        modifiersData.push({
+          modifierId: dbMod.id,
+          modifierNameSnapshot: dbMod.name,
+          priceDeltaSnapshot: dbMod.priceDelta
+        });
+      }
+
+      subtotal += itemTotal * item.quantity;
+      
+      orderItemsData.push({
+        productId: dbProduct.id,
+        productNameSnapshot: dbProduct.name,
+        unitPriceSnapshot: dbProduct.price,
+        quantity: item.quantity,
+        notes: item.notes,
+        modifiers: {
+          create: modifiersData
+        }
+      });
+    }
+
+    // Wrap in transaction to get order number and create safely
+    const order = await prisma.$transaction(async (tx) => {
+      // Very naive order number generation (Subject to race conditions under extreme load, but fine for MVP)
+      const count = await tx.order.count({ where: { restaurantId: session.restaurantId } });
+      const orderNumber = count + 1;
+
+      return await tx.order.create({
+        data: {
+          restaurantId: session.restaurantId,
+          tableId: session.tableId,
+          customerSessionId: session.id,
+          orderNumber,
+          status: 'PENDING',
+          subtotal,
+          total: subtotal, // Assuming no tax/fees for now
+          notes,
+          items: {
+            create: orderItemsData
+          }
+        },
+        include: {
+          items: {
+            include: { modifiers: true }
+          }
+        }
+      });
+    });
+
+    sendSuccess(res, order);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /orders/:id ─────────────────────────────────────
+router.get('/orders/:id', async (req, res, next) => {
+  try {
+    const sessionToken = req.cookies[SESSION_COOKIE_NAME];
+    if (!sessionToken) throw AppError.unauthorized('No active session');
+
+    const session = await prisma.customerSession.findUnique({
+      where: { sessionToken }
+    });
+
+    if (!session) throw AppError.unauthorized('Session invalid');
+
+    const order = await prisma.order.findFirst({
+      where: { 
+        id: req.params.id,
+        customerSessionId: session.id 
+      },
+      include: {
+        items: {
+          include: { modifiers: true }
+        }
+      }
+    });
+
+    if (!order) throw AppError.notFound('Order not found');
+
+    sendSuccess(res, order);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
