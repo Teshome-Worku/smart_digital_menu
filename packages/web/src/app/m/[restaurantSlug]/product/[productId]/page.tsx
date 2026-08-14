@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { PublicProductDto } from '@sdm/shared';
 import { Button } from '@/components/ui/button';
+import { useCartStore } from '@/lib/store/cartStore';
+import { useToast } from '@/components/ui/toast';
 
 export default function CustomerProductPage() {
   const params = useParams();
@@ -15,6 +17,10 @@ export default function CustomerProductPage() {
   const [product, setProduct] = useState<PublicProductDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [selectedModifiers, setSelectedModifiers] = useState<Set<string>>(new Set());
+
+  const addItem = useCartStore(state => state.addItem);
+  const { toast } = useToast();
 
   useEffect(() => {
     async function loadData() {
@@ -91,19 +97,82 @@ export default function CustomerProductPage() {
           {product.description || 'No description provided.'}
         </p>
 
-        {/* Modifiers (Stub for Phase 4) */}
+        {/* Modifiers */}
         {product.modifierGroups && product.modifierGroups.length > 0 && (
           <div className="space-y-6 mb-8">
-            <h3 className="font-bold text-surface-900 border-b border-surface-100 pb-2">Customizations</h3>
-            <p className="text-sm text-surface-500 italic">Modifier selection will be available in Phase 4.</p>
+            {product.modifierGroups.map(group => {
+              // Calculate how many selected for this group
+              const selectedCount = group.modifiers.filter(m => selectedModifiers.has(m.id)).length;
+              
+              return (
+                <div key={group.id} className="space-y-3">
+                  <div className="flex justify-between items-baseline border-b border-surface-100 pb-2">
+                    <h3 className="font-bold text-surface-900">{group.name}</h3>
+                    <span className="text-xs font-medium text-surface-500">
+                      {group.isRequired ? 'Required' : 'Optional'}
+                      {group.maxSelections > 1 ? ` (Max ${group.maxSelections})` : ''}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {group.modifiers.filter(m => m.isAvailable).map(mod => {
+                      const isSelected = selectedModifiers.has(mod.id);
+                      return (
+                        <label 
+                          key={mod.id} 
+                          className="flex items-center justify-between p-3 rounded-xl border border-surface-200 bg-white hover:bg-surface-50 active:bg-surface-100 transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <input 
+                              type="checkbox"
+                              className="sr-only"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                const newSet = new Set(selectedModifiers);
+                                
+                                if (checked) {
+                                  // Enforce maxSelections
+                                  if (group.maxSelections === 1) {
+                                    // Radio behavior: uncheck others in this group
+                                    group.modifiers.forEach(m => newSet.delete(m.id));
+                                    newSet.add(mod.id);
+                                  } else if (selectedCount < group.maxSelections || group.maxSelections === 0) {
+                                    newSet.add(mod.id);
+                                  } else {
+                                    // Too many selected
+                                    toast(`You can only select up to ${group.maxSelections} options here.`, 'error');
+                                    return;
+                                  }
+                                } else {
+                                  newSet.delete(mod.id);
+                                }
+                                
+                                setSelectedModifiers(newSet);
+                              }}
+                            />
+                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${isSelected ? 'border-primary-500 bg-primary-500 text-white' : 'border-surface-300'}`}>
+                              {isSelected && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                            <span className="font-medium text-surface-900 text-sm">{mod.name}</span>
+                          </div>
+                          {mod.priceDelta > 0 && (
+                            <span className="text-sm font-semibold text-surface-600">+${mod.priceDelta.toFixed(2)}</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Fixed Bottom Action Bar (Sits above the layout bottom nav) */}
+      {/* Fixed Bottom Action Bar */}
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-surface-200 p-4 max-w-md mx-auto shadow-[0_-4px_16px_rgba(0,0,0,0.05)] z-40">
         <div className="flex items-center gap-4">
-          <div className="flex items-center bg-surface-100 rounded-xl border border-surface-200 overflow-hidden">
+          <div className="flex items-center bg-surface-100 rounded-xl border border-surface-200 overflow-hidden shrink-0">
             <button 
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
               className="w-12 h-12 flex items-center justify-center text-surface-600 hover:bg-surface-200 active:bg-surface-300 transition-colors"
@@ -122,10 +191,48 @@ export default function CustomerProductPage() {
           <Button 
             className="flex-1 h-12 text-base font-semibold shadow-sm"
             onClick={() => {
-              alert('Cart functionality will be implemented in Phase 4!');
+              // Add to cart
+              // First validate required modifiers
+              for (const group of product.modifierGroups || []) {
+                if (group.isRequired) {
+                  const selectedCount = group.modifiers.filter(m => selectedModifiers.has(m.id)).length;
+                  if (selectedCount < group.minSelections) {
+                    toast(`Please select at least ${group.minSelections} option(s) for ${group.name}`, 'error');
+                    return;
+                  }
+                }
+              }
+
+              const cartModifiers = Array.from(selectedModifiers).map(id => {
+                const group = product.modifierGroups?.find(g => g.modifiers.some(m => m.id === id));
+                const mod = group?.modifiers.find(m => m.id === id);
+                return {
+                  modifierId: id,
+                  name: mod?.name || '',
+                  priceDelta: mod?.priceDelta || 0
+                };
+              });
+
+              addItem(restaurantSlug, {
+                productId: product.id,
+                name: product.name,
+                price: product.price,
+                imageUrl: product.imageUrl,
+                quantity,
+                modifiers: cartModifiers
+              });
+
+              toast('Added to your order!');
+              router.back();
             }}
           >
-            Add to Order • ${(product.price * quantity).toFixed(2)}
+            Add to Order • ${(
+              (product.price + Array.from(selectedModifiers).reduce((sum, id) => {
+                const group = product.modifierGroups?.find(g => g.modifiers.some(m => m.id === id));
+                const mod = group?.modifiers.find(m => m.id === id);
+                return sum + (mod?.priceDelta || 0);
+              }, 0)) * quantity
+            ).toFixed(2)}
           </Button>
         </div>
       </div>
