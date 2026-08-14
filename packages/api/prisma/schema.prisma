@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum Role {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum RestaurantStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+// ─── Core Identity ───────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships      RestaurantMembership[]
+  ownedRestaurants Restaurant[]           @relation("RestaurantOwner")
+
+  @@map("users")
+}
+
+model Restaurant {
+  id            String           @id @default(cuid())
+  name          String
+  slug          String           @unique
+  description   String?
+  logoUrl       String?
+  coverImageUrl String?
+  currency      String           @default("USD")
+  timezone      String           @default("UTC")
+  status        RestaurantStatus @default(ACTIVE)
+  ownerId       String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  owner       User                   @relation("RestaurantOwner", fields: [ownerId], references: [id])
+  memberships RestaurantMembership[]
+
+  @@index([slug])
+  @@index([ownerId])
+  @@map("restaurants")
+}
+
+model RestaurantMembership {
+  id           String   @id @default(cuid())
+  userId       String
+  restaurantId String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, restaurantId])
+  @@index([userId])
+  @@index([restaurantId])
+  @@map("restaurant_memberships")
+}

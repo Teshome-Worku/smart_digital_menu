@@ -1,0 +1,25 @@
+{
+  "name": "smart-digital-menu",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "packages/api",
+    "packages/web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @sdm/api\" \"npm run dev -w @sdm/web\"",
+    "dev:api": "npm run dev -w @sdm/api",
+    "dev:web": "npm run dev -w @sdm/web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:migrate": "npm run db:migrate -w @sdm/api",
+    "db:generate": "npm run db:generate -w @sdm/api",
+    "db:seed": "npm run db:seed -w @sdm/api",
+    "db:studio": "npm run db:studio -w @sdm/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
