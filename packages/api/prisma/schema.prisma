@@ -69,6 +69,7 @@ model Restaurant {
   productTags      ProductTag[]
   tables           RestaurantTable[]
   customerSessions CustomerSession[]
+  orders           Order[]
 
   @@index([slug])
   @@index([ownerId])
@@ -126,11 +127,11 @@ model Product {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
+  restaurant     Restaurant             @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category       Category               @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   tagAssignments ProductTagAssignment[]
   modifierGroups ProductModifierGroup[]
+  orderItems     OrderItem[]
 
   @@unique([restaurantId, slug])
   @@index([restaurantId])
@@ -186,7 +187,8 @@ model ProductModifier {
   priceDelta  Float   @default(0)
   isAvailable Boolean @default(true)
 
-  group ProductModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group              ProductModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  orderItemModifiers OrderItemModifier[]
 
   @@index([groupId])
   @@map("product_modifiers")
@@ -205,6 +207,7 @@ model RestaurantTable {
 
   restaurant Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   sessions   CustomerSession[]
+  orders     Order[]
 
   @@unique([restaurantId, number])
   @@index([restaurantId])
@@ -223,8 +226,68 @@ model CustomerSession {
   restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   table      RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
   user       User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  orders     Order[]
 
   @@index([restaurantId])
   @@index([tableId])
   @@map("customer_sessions")
+}
+
+// ─── Order Models ────────────────────────────────────────
+
+model Order {
+  id                String      @id @default(cuid())
+  restaurantId      String
+  tableId           String
+  customerSessionId String
+  orderNumber       Int
+  status            OrderStatus @default(PENDING)
+  subtotal          Float
+  total             Float
+  notes             String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  restaurant      Restaurant      @relation(fields: [restaurantId], references: [id])
+  table           RestaurantTable @relation(fields: [tableId], references: [id])
+  customerSession CustomerSession @relation(fields: [customerSessionId], references: [id])
+  items           OrderItem[]
+
+  @@index([restaurantId])
+  @@index([tableId])
+  @@index([customerSessionId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                  String   @id @default(cuid())
+  orderId             String
+  productId           String
+  productNameSnapshot String
+  unitPriceSnapshot   Float
+  quantity            Int
+  notes               String?
+
+  order     Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product             @relation(fields: [productId], references: [id])
+  modifiers OrderItemModifier[]
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model OrderItemModifier {
+  id                   String @id @default(cuid())
+  orderItemId          String
+  modifierId           String
+  modifierNameSnapshot String
+  priceDeltaSnapshot   Float
+
+  orderItem OrderItem       @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  modifier  ProductModifier @relation(fields: [modifierId], references: [id])
+
+  @@index([orderItemId])
+  @@index([modifierId])
+  @@map("order_item_modifiers")
 }
