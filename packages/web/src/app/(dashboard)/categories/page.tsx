@@ -215,7 +215,7 @@ export default function CategoriesPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-dashboard-text truncate">{category.name}</h3>
-                    {!category.isActive && <Badge variant="secondary">Hidden</Badge>}
+                    {!category.isActive && <Badge variant="default">Hidden</Badge>}
                   </div>
                   {category.description && (
                     <p className="text-sm text-dashboard-muted truncate mt-0.5">{category.description}</p>
