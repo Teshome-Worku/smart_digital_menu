@@ -54,8 +54,8 @@ export default function QRCodesPage() {
   };
 
   const baseUrl = getBaseUrl();
-  const restaurantName = currentRestaurant?.restaurant.name || 'Restaurant';
-  const logoUrl = currentRestaurant?.restaurant.logoUrl;
+  const restaurantName = currentRestaurant?.restaurantName || 'Restaurant';
+  const logoUrl = currentRestaurant?.restaurantLogoUrl;
 
   if (isLoading) {
     return <div className="p-8 text-dashboard-muted animate-pulse">Loading QR Codes...</div>;

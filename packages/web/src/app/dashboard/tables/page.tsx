@@ -7,7 +7,7 @@ import type { TableDto, CreateTableRequest } from '@sdm/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+
 
 export default function TablesPage() {
   const { memberships } = useAuth();
@@ -158,40 +158,40 @@ export default function TablesPage() {
         )}
       </div>
 
-      {/* Add Table Dialog */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Table</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAddTable} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-dashboard-text">Table Number</label>
-              <Input 
-                type="number" 
-                min="1"
-                required 
-                value={newTableNumber} 
-                onChange={e => setNewTableNumber(e.target.value)} 
-                placeholder="e.g. 1" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-dashboard-text">Table Name / Label</label>
-              <Input 
-                required 
-                value={newTableName} 
-                onChange={e => setNewTableName(e.target.value)} 
-                placeholder="e.g. Table 1, Window Seat" 
-              />
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-              <Button type="submit" isLoading={isSubmitting}>Add Table</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Add Table Modal */}
+      {isAddOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-dashboard-card w-full max-w-md rounded-2xl border border-dashboard-border shadow-xl p-6">
+            <h2 className="text-xl font-bold text-dashboard-text mb-4">Add New Table</h2>
+            <form onSubmit={handleAddTable} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-dashboard-text">Table Number</label>
+                <Input 
+                  type="number" 
+                  min="1"
+                  required 
+                  value={newTableNumber} 
+                  onChange={e => setNewTableNumber(e.target.value)} 
+                  placeholder="e.g. 1" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-dashboard-text">Table Name / Label</label>
+                <Input 
+                  required 
+                  value={newTableName} 
+                  onChange={e => setNewTableName(e.target.value)} 
+                  placeholder="e.g. Table 1, Window Seat" 
+                />
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                <Button type="submit" isLoading={isSubmitting}>Add Table</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -163,7 +163,7 @@ router.get(
       const memberships = await prisma.restaurantMembership.findMany({
         where: { userId: user.id },
         include: {
-          restaurant: { select: { id: true, name: true, slug: true } },
+          restaurant: { select: { id: true, name: true, slug: true, logoUrl: true } },
         },
       });
 
@@ -174,6 +174,7 @@ router.get(
           restaurantId: m.restaurant.id,
           restaurantName: m.restaurant.name,
           restaurantSlug: m.restaurant.slug,
+          restaurantLogoUrl: m.restaurant.logoUrl,
           role: m.role,
         })),
       });

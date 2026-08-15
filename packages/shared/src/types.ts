@@ -72,6 +72,7 @@ export interface RestaurantMembershipInfo {
   restaurantId: string;
   restaurantName: string;
   restaurantSlug: string;
+  restaurantLogoUrl: string | null;
   role: Role;
 }
 
