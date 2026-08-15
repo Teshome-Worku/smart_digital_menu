@@ -31,7 +31,7 @@ router.get('/', allowRead, validate(getOrdersQuerySchema, 'query'), async (req, 
 
     const where: any = { restaurantId };
     if (status) {
-      where.status = status;
+      where.status = status as OrderStatus;
     } else {
       // By default, only show active orders in the board
       where.status = { in: ['PENDING', 'ACCEPTED', 'PREPARING', 'READY'] };
