@@ -15,7 +15,14 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: (origin, callback) => {
+      // In development, allow any origin (e.g. localhost or local IP)
+      if (env.NODE_ENV !== 'production') {
+        callback(null, true);
+        return;
+      }
+      callback(null, env.CORS_ORIGIN);
+    },
     credentials: true,
   }),
 );
