@@ -257,3 +257,26 @@ export interface OrderDto {
 export interface UpdateOrderStatusRequest {
   status: OrderStatus;
 }
+
+// ─── Phase 5: Table Management ───────────────────────────
+
+export interface TableDto {
+  id: string;
+  restaurantId: string;
+  name: string;
+  number: number;
+  qrToken: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateTableRequest {
+  name: string;
+  number: number;
+}
+
+export interface UpdateTableRequest {
+  name?: string;
+  number?: number;
+  isActive?: boolean;
+}
