@@ -96,8 +96,8 @@ const updateStatusSchema = z.object({
 router.patch('/:id/status', allowWrite, validate(updateStatusSchema), async (req, res, next) => {
   try {
     const { restaurantId } = req as TenantRequest;
-    const orderId = req.params.id;
-    const { status } = req.body;
+    const orderId = req.params.id as string;
+    const { status } = req.body as { status: OrderStatus };
 
     const order = await prisma.order.findFirst({
       where: { id: orderId, restaurantId }

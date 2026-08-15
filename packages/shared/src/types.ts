@@ -1,4 +1,4 @@
-import type { Role, RestaurantStatus } from './constants';
+import type { Role, RestaurantStatus, OrderStatus } from './constants';
 
 // ─── API Response ────────────────────────────────────────
 export interface ApiSuccessResponse<T = unknown> {
@@ -202,8 +202,6 @@ export interface PublicProductDto {
 }
 
 // ─── Phase 4: Order Models & DTOs ────────────────────────
-
-export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
 
 // Customer Checkout Payload
 export interface CreateOrderItemModifierRequest {
