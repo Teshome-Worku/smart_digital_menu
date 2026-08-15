@@ -110,7 +110,7 @@ export default function CustomerProductPage() {
                     <h3 className="font-bold text-surface-900">{group.name}</h3>
                     <span className="text-xs font-medium text-surface-500">
                       {group.required ? 'Required' : 'Optional'}
-                      {group.maxSelections && group.maxSelections > 1 ? ` (Max ${group.maxSelections})` : ''}
+                      {(group.maxSelections || 0) > 1 ? ` (Max ${group.maxSelections})` : ''}
                     </span>
                   </div>
                   <div className="space-y-2">

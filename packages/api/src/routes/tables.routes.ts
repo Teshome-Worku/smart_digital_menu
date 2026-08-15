@@ -91,7 +91,7 @@ router.post('/', allowWrite, validate(createTableSchema), async (req, res, next)
 router.patch('/:id', allowWrite, validate(updateTableSchema), async (req, res, next) => {
   try {
     const { restaurantId } = req as TenantRequest;
-    const tableId = req.params.id;
+    const tableId = req.params.id as string;
 
     // Validate table existence
     const existing = await prisma.restaurantTable.findFirst({
@@ -130,7 +130,7 @@ router.patch('/:id', allowWrite, validate(updateTableSchema), async (req, res, n
 router.delete('/:id', allowWrite, async (req, res, next) => {
   try {
     const { restaurantId } = req as TenantRequest;
-    const tableId = req.params.id;
+    const tableId = req.params.id as string;
 
     const existing = await prisma.restaurantTable.findFirst({
       where: { id: tableId, restaurantId },
@@ -157,7 +157,7 @@ router.delete('/:id', allowWrite, async (req, res, next) => {
 router.post('/:id/rotate-token', allowWrite, async (req, res, next) => {
   try {
     const { restaurantId } = req as TenantRequest;
-    const tableId = req.params.id;
+    const tableId = req.params.id as string;
 
     const existing = await prisma.restaurantTable.findFirst({
       where: { id: tableId, restaurantId },

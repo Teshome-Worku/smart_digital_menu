@@ -10,6 +10,7 @@ import { slugify, uniqueSlug } from '../utils/slug';
 import categoriesRouter from './categories.routes';
 import productsRouter from './products.routes';
 import ordersRouter from './orders.routes';
+import tablesRouter from './tables.routes';
 
 const router = Router();
 
@@ -140,5 +141,6 @@ router.put(
 router.use('/:restaurantId/categories', categoriesRouter);
 router.use('/:restaurantId/products', productsRouter);
 router.use('/:restaurantId/orders', ordersRouter);
+router.use('/:restaurantId/tables', tablesRouter);
 
 export default router;
