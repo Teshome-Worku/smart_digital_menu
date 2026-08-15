@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { api } from '@/lib/api';
 import type { PublicProductDto } from '@sdm/shared';
 import { Button } from '@/components/ui/button';
@@ -64,13 +65,11 @@ export default function CustomerProductPage() {
       </button>
 
       {/* Image Header */}
-      <div className="w-full h-72 bg-surface-100 relative">
+      <div className="relative h-64 sm:h-80 w-full bg-surface-100 flex-shrink-0">
         {product.imageUrl ? (
-          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+          <Image src={product.imageUrl} alt={product.name} fill className="object-cover" priority sizes="(max-width: 640px) 100vw, 640px" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-6xl opacity-30">
-            🍽️
-          </div>
+          <div className="w-full h-full flex items-center justify-center text-6xl opacity-50">🍽️</div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
       </div>

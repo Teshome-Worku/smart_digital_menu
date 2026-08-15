@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { api } from '@/lib/api';
 import type { PublicCategoryDto, PublicProductDto } from '@sdm/shared';
 
@@ -189,7 +190,7 @@ function ProductCard({ product, slug }: { product: PublicProductDto; slug: strin
         </div>
         <div className="w-24 h-24 shrink-0 rounded-xl bg-surface-100 relative overflow-hidden">
           {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+            <Image src={product.imageUrl} alt={product.name} fill className="object-cover" sizes="96px" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-3xl opacity-50">🍽️</div>
           )}

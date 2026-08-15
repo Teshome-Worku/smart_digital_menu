@@ -1,93 +1,60 @@
-import type { ImageUploadResult } from '@sdm/shared';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import { env } from '../config/env';
+import { AppError } from '../utils/errors';
 
-// ─── Image Storage Interface ─────────────────────────────
-// All image operations go through this abstraction.
-// Swap the provider implementation without changing application code.
+// Initialize Cloudinary
+cloudinary.config({
+  cloud_name: env.CLOUDINARY_CLOUD_NAME,
+  api_key: env.CLOUDINARY_API_KEY,
+  api_secret: env.CLOUDINARY_API_SECRET,
+});
 
-export interface UploadOptions {
-  folder?: string;
-  publicId?: string;
-  width?: number;
-  height?: number;
-  crop?: 'fill' | 'fit' | 'scale';
-}
+export class ImageService {
+  /**
+   * Uploads a buffer to Cloudinary
+   * @param fileBuffer The file buffer (from multer memory storage)
+   * @param folder Optional folder name in Cloudinary
+   * @returns The secure URL of the uploaded image
+   */
+  static async uploadImage(fileBuffer: Buffer, folder = 'sdm-products'): Promise<string> {
+    if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+      throw AppError.internal('Cloudinary is not configured on the server');
+    }
 
-export interface TransformOptions {
-  width?: number;
-  height?: number;
-  quality?: number;
-  format?: 'auto' | 'webp' | 'jpg' | 'png';
-}
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: 'image',
+          format: 'webp', // Auto-convert to webp for better optimization
+          transformation: [
+            { width: 1200, height: 1200, crop: 'limit' }, // Prevent absurdly huge images
+          ],
+        },
+        (error, result: UploadApiResponse | undefined) => {
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            reject(AppError.internal('Failed to upload image'));
+          } else if (result) {
+            resolve(result.secure_url);
+          } else {
+            reject(AppError.internal('Unknown upload error'));
+          }
+        },
+      );
 
-export interface ImageStorageProvider {
-  upload(fileBuffer: Buffer, options?: UploadOptions): Promise<ImageUploadResult>;
-  delete(publicId: string): Promise<void>;
-  getUrl(publicId: string, options?: TransformOptions): string;
-}
-
-// ─── Cloudinary Provider (connect when credentials available) ─
-
-export class CloudinaryProvider implements ImageStorageProvider {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async upload(_fileBuffer: Buffer, _options?: UploadOptions): Promise<ImageUploadResult> {
-    // TODO: Implement with cloudinary SDK when credentials are configured.
-    // import { v2 as cloudinary } from 'cloudinary';
-    // cloudinary.config({ cloud_name, api_key, api_secret });
-    // const result = await cloudinary.uploader.upload_stream(...)
-    throw new Error(
-      'Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.',
-    );
+      uploadStream.end(fileBuffer);
+    });
   }
 
-  async delete(_publicId: string): Promise<void> {
-    throw new Error('Cloudinary is not configured.');
-  }
-
-  getUrl(publicId: string, _options?: TransformOptions): string {
-    // Return the publicId as-is; when Cloudinary is configured this will
-    // generate a full transformation URL.
-    return publicId;
-  }
-}
-
-// ─── Placeholder Provider (for development without Cloudinary) ─
-
-export class PlaceholderImageProvider implements ImageStorageProvider {
-  async upload(_fileBuffer: Buffer, options?: UploadOptions): Promise<ImageUploadResult> {
-    const publicId = options?.publicId || `placeholder_${Date.now()}`;
-    return {
-      url: `https://placehold.co/600x400/f97316/white?text=Menu+Image`,
-      publicId,
-      width: 600,
-      height: 400,
-    };
-  }
-
-  async delete(_publicId: string): Promise<void> {
-    // No-op for placeholder
-  }
-
-  getUrl(publicId: string, _options?: TransformOptions): string {
-    return publicId.startsWith('http')
-      ? publicId
-      : `https://placehold.co/600x400/f97316/white?text=Image`;
+  /**
+   * Optional: Helper to delete an image by public ID if needed later
+   */
+  static async deleteImage(publicId: string): Promise<void> {
+    try {
+      await cloudinary.uploader.destroy(publicId);
+    } catch (error) {
+      console.error('Failed to delete image from Cloudinary:', error);
+    }
   }
 }
-
-// ─── Factory ─────────────────────────────────────────────
-
-export function createImageProvider(): ImageStorageProvider {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-  if (cloudName && apiKey && apiSecret) {
-    return new CloudinaryProvider();
-  }
-
-  console.warn('[ImageStorage] Cloudinary not configured — using placeholder provider');
-  return new PlaceholderImageProvider();
-}
-
-/** Singleton image provider instance */
-export const imageProvider = createImageProvider();

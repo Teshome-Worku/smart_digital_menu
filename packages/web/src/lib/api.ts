@@ -23,6 +23,11 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // If body is FormData, do not set Content-Type header so browser sets multipart/form-data with boundary
+    if (options.body instanceof FormData) {
+      delete headers['Content-Type'];
+    }
+
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers,
@@ -60,6 +65,16 @@ class ApiClient {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  upload<T>(endpoint: string, file: File): Promise<T> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: formData,
     });
   }
 
