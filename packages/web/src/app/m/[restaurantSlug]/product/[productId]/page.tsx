@@ -109,8 +109,8 @@ export default function CustomerProductPage() {
                   <div className="flex justify-between items-baseline border-b border-surface-100 pb-2">
                     <h3 className="font-bold text-surface-900">{group.name}</h3>
                     <span className="text-xs font-medium text-surface-500">
-                      {group.isRequired ? 'Required' : 'Optional'}
-                      {group.maxSelections > 1 ? ` (Max ${group.maxSelections})` : ''}
+                      {group.required ? 'Required' : 'Optional'}
+                      {group.maxSelections && group.maxSelections > 1 ? ` (Max ${group.maxSelections})` : ''}
                     </span>
                   </div>
                   <div className="space-y-2">
@@ -132,15 +132,16 @@ export default function CustomerProductPage() {
                                 
                                 if (checked) {
                                   // Enforce maxSelections
-                                  if (group.maxSelections === 1) {
+                                  const maxSel = group.maxSelections || 0;
+                                  if (maxSel === 1) {
                                     // Radio behavior: uncheck others in this group
                                     group.modifiers.forEach(m => newSet.delete(m.id));
                                     newSet.add(mod.id);
-                                  } else if (selectedCount < group.maxSelections || group.maxSelections === 0) {
+                                  } else if (selectedCount < maxSel || maxSel === 0) {
                                     newSet.add(mod.id);
                                   } else {
                                     // Too many selected
-                                    toast(`You can only select up to ${group.maxSelections} options here.`, 'error');
+                                    toast(`You can only select up to ${maxSel} options here.`, 'error');
                                     return;
                                   }
                                 } else {
@@ -194,7 +195,7 @@ export default function CustomerProductPage() {
               // Add to cart
               // First validate required modifiers
               for (const group of product.modifierGroups || []) {
-                if (group.isRequired) {
+                if (group.required) {
                   const selectedCount = group.modifiers.filter(m => selectedModifiers.has(m.id)).length;
                   if (selectedCount < group.minSelections) {
                     toast(`Please select at least ${group.minSelections} option(s) for ${group.name}`, 'error');
