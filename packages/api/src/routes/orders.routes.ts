@@ -6,7 +6,7 @@ import { requireTenant, TenantRequest } from '../middleware/tenantContext';
 import { validate } from '../middleware/validate';
 import { AppError } from '../utils/errors';
 import { sendSuccess } from '../utils/apiResponse';
-import type { OrderStatus } from '@sdm/shared';
+type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
 
 const router = Router({ mergeParams: true });
 
