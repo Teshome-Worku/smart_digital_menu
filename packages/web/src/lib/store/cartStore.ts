@@ -17,6 +17,15 @@ export interface CartItem {
   modifiers: CartItemModifier[];
 }
 
+function createCartItemId(): string {
+  const cryptoApi = typeof globalThis !== 'undefined' ? globalThis.crypto : undefined;
+  if (cryptoApi?.randomUUID) {
+    return cryptoApi.randomUUID();
+  }
+
+  return `cart-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 interface CartState {
   restaurantId: string | null;
   items: CartItem[];
@@ -59,7 +68,7 @@ export const useCartStore = create<CartState>()(
         // Add as new line item
         const newItem: CartItem = {
           ...item,
-          id: crypto.randomUUID(), // Standard web API for generating UUIDs
+          id: createCartItemId(),
         };
 
         return { restaurantId, items: [...newItems, newItem] };

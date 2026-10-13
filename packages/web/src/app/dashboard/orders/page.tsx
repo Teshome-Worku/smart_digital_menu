@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useRouter } from 'next/navigation';
 import type { OrderDto, OrderStatus } from '@sdm/shared';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 
 export default function DashboardOrdersPage() {
   const { memberships } = useAuth();
+  const router = useRouter();
   const currentRestaurant = memberships[0];
   const { toast } = useToast();
 
@@ -21,7 +23,13 @@ export default function DashboardOrdersPage() {
       const response = await api.get<OrderDto[]>(`/restaurants/${currentRestaurant.restaurantId}/orders`);
       setOrders(response);
     } catch (err) {
-      console.error(err);
+      if (err instanceof ApiError && err.status === 401) {
+        toast('Your dashboard session expired. Please sign in again.', 'error');
+        router.replace('/login');
+      } else {
+        console.error(err);
+        toast('Could not load orders. Please try again.', 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -31,7 +39,7 @@ export default function DashboardOrdersPage() {
     fetchOrders();
     const interval = setInterval(fetchOrders, 15000); // poll every 15s
     return () => clearInterval(interval);
-  }, [currentRestaurant]);
+  }, [currentRestaurant, router, toast]);
 
   const updateStatus = async (orderId: string, status: OrderStatus) => {
     try {

@@ -31,11 +31,20 @@ const typeIcons: Record<ToastType, string> = {
   warning: '⚠',
 };
 
+function createToastId(): string {
+  const cryptoApi = typeof globalThis !== 'undefined' ? globalThis.crypto : undefined;
+  if (cryptoApi?.randomUUID) {
+    return cryptoApi.randomUUID();
+  }
+
+  return `toast-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = crypto.randomUUID();
+    const id = createToastId();
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));

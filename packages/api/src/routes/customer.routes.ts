@@ -97,7 +97,6 @@ router.get('/session', async (req, res, next) => {
     }
 
     const sessionDto: CustomerSessionDto = {
-      sessionToken: session.sessionToken, // Usually we wouldn't return the token if it's HttpOnly, but might be useful for frontend identity.
       restaurantId: session.restaurantId,
       restaurantSlug: session.restaurant.slug,
       tableId: session.tableId,
@@ -272,13 +271,13 @@ router.get('/:slug/products/:productId', async (req, res, next) => {
 const createOrderSchema = z.object({
   items: z.array(z.object({
     productId: z.string(),
-    quantity: z.number().int().positive(),
-    notes: z.string().optional(),
+    quantity: z.number().int().min(1).max(50),
+    notes: z.string().max(500).optional(),
     modifiers: z.array(z.object({
       modifierId: z.string()
-    })).default([])
-  })).min(1),
-  notes: z.string().optional()
+    })).max(20).default([])
+  })).min(1).max(50),
+  notes: z.string().max(1000).optional()
 });
 
 router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
@@ -288,10 +287,10 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
 
     const session = await prisma.customerSession.findUnique({
       where: { sessionToken },
-      include: { table: true }
+      include: { table: true, restaurant: true }
     });
 
-    if (!session || session.expiresAt < new Date() || !session.table.isActive) {
+    if (!session || session.expiresAt < new Date() || !session.table.isActive || session.restaurant.status !== 'ACTIVE') {
       throw AppError.unauthorized('Session expired or invalid.');
     }
 
@@ -306,13 +305,8 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
     // Fetch all products involved in one query
     const productIds = items.map((i: any) => i.productId);
     const dbProducts = await prisma.product.findMany({
-      where: { id: { in: productIds }, restaurantId: session.restaurantId }
-    });
-
-    // We also need modifiers
-    const modifierIds = items.flatMap((i: any) => i.modifiers.map((m: any) => m.modifierId));
-    const dbModifiers = await prisma.productModifier.findMany({
-      where: { id: { in: modifierIds } } // Note: we should strictly ensure they belong to the product groups, but skipping deep validation for MVP
+      where: { id: { in: productIds }, restaurantId: session.restaurantId },
+      include: { modifierGroups: { include: { modifiers: true } } },
     });
 
     for (const item of items) {
@@ -321,11 +315,19 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
         throw AppError.badRequest(`Product unavailable: ${item.productId}`);
       }
 
+      const selectedModifierIds = item.modifiers.map((modifier: { modifierId: string }) => modifier.modifierId);
+      if (new Set(selectedModifierIds).size !== selectedModifierIds.length) {
+        throw AppError.badRequest(`Duplicate modifiers are not allowed for ${dbProduct.name}.`);
+      }
+
       let itemTotal = dbProduct.price;
       const modifiersData: any[] = [];
 
       for (const mod of item.modifiers) {
-        const dbMod = dbModifiers.find(m => m.id === mod.modifierId);
+        const dbGroup = dbProduct.modifierGroups.find(group =>
+          group.modifiers.some(productModifier => productModifier.id === mod.modifierId),
+        );
+        const dbMod = dbGroup?.modifiers.find(productModifier => productModifier.id === mod.modifierId);
         if (!dbMod || !dbMod.isAvailable) {
           throw AppError.badRequest(`Modifier unavailable: ${mod.modifierId}`);
         }
@@ -335,6 +337,21 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
           modifierNameSnapshot: dbMod.name,
           priceDeltaSnapshot: dbMod.priceDelta
         });
+      }
+
+      for (const group of dbProduct.modifierGroups) {
+        const selectedInGroup = item.modifiers.filter((modifier: { modifierId: string }) =>
+          group.modifiers.some(productModifier => productModifier.id === modifier.modifierId),
+        ).length;
+        if (group.required && selectedInGroup < Math.max(1, group.minSelections)) {
+          throw AppError.badRequest(`Select an option for ${group.name}.`);
+        }
+        if (selectedInGroup < group.minSelections) {
+          throw AppError.badRequest(`Select at least ${group.minSelections} options for ${group.name}.`);
+        }
+        if (group.maxSelections !== null && selectedInGroup > group.maxSelections) {
+          throw AppError.badRequest(`Select no more than ${group.maxSelections} options for ${group.name}.`);
+        }
       }
 
       subtotal += itemTotal * item.quantity;

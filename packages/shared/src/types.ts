@@ -174,7 +174,6 @@ export interface PublicRestaurantDto {
 }
 
 export interface CustomerSessionDto {
-  sessionToken: string;
   restaurantId: string;
   tableId: string;
   tableName: string;

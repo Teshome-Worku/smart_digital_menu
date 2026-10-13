@@ -107,6 +107,18 @@ router.patch('/:id/status', allowWrite, validate(updateStatusSchema), async (req
       throw AppError.notFound('Order not found');
     }
 
+    const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
+      PENDING: ['ACCEPTED', 'PREPARING', 'CANCELLED'],
+      ACCEPTED: ['PREPARING', 'CANCELLED'],
+      PREPARING: ['READY', 'CANCELLED'],
+      READY: ['COMPLETED'],
+      COMPLETED: [],
+      CANCELLED: [],
+    };
+    if (!allowedTransitions[order.status].includes(status)) {
+      throw AppError.badRequest(`Cannot move an order from ${order.status} to ${status}.`);
+    }
+
     const updated = await prisma.order.update({
       where: { id: orderId },
       data: { status },
