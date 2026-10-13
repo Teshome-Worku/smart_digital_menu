@@ -23,6 +23,18 @@ export default function CustomerOrderPage() {
 
   const [order, setOrder] = useState<OrderDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const copyOrderReference = async () => {
+    if (!order) return;
+    try {
+      await navigator.clipboard.writeText(String(order.orderNumber));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   const fetchOrder = async () => {
     try {
@@ -83,6 +95,20 @@ export default function CustomerOrderPage() {
       <div className="p-4 space-y-4">
         {/* Status Card */}
         <div className="bg-white rounded-2xl border border-surface-200 p-6 text-center shadow-sm">
+          <div className="mb-5 rounded-xl bg-primary-50 border border-primary-100 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary-700">Your order reference</p>
+            <div className="mt-1 flex items-center justify-center gap-2">
+              <span className="text-2xl font-black text-surface-900">#{order.orderNumber}</span>
+              <button
+                type="button"
+                onClick={copyOrderReference}
+                className="rounded-lg border border-primary-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-primary-700"
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-surface-500">Save this number to check your order status later.</p>
+          </div>
           <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center text-4xl mb-4 ${currentStatus.color}`}>
             {currentStatus.icon}
           </div>

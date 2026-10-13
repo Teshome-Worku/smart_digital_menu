@@ -268,6 +268,10 @@ router.get('/:slug/products/:productId', async (req, res, next) => {
 });
 
 // ─── POST /orders ──────────────────────────────────────────
+const orderHistoryQuerySchema = z.object({
+  orderNumber: z.coerce.number().int().positive().optional(),
+});
+
 const createOrderSchema = z.object({
   items: z.array(z.object({
     productId: z.string(),
@@ -402,6 +406,38 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
   }
 });
 
+// ─── GET /orders ─────────────────────────────────────────
+router.get('/orders', async (req, res, next) => {
+  try {
+    const { orderNumber } = orderHistoryQuerySchema.parse(req.query);
+    const sessionToken = req.cookies[SESSION_COOKIE_NAME];
+    if (!sessionToken) throw AppError.unauthorized('No active session');
+
+    const session = await prisma.customerSession.findUnique({
+      where: { sessionToken },
+    });
+
+    if (!session || session.expiresAt < new Date()) {
+      throw AppError.unauthorized('Session expired. Scan the table QR code again.');
+    }
+
+    const orders = await prisma.order.findMany({
+      where: { customerSessionId: session.id },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: { items: { include: { modifiers: true } } },
+    });
+
+    const filteredOrders = orderNumber
+      ? orders.filter((order) => order.orderNumber === orderNumber)
+      : orders;
+
+    sendSuccess(res, filteredOrders);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── GET /orders/:id ─────────────────────────────────────
 router.get('/orders/:id', async (req, res, next) => {
   try {
@@ -412,7 +448,9 @@ router.get('/orders/:id', async (req, res, next) => {
       where: { sessionToken }
     });
 
-    if (!session) throw AppError.unauthorized('Session invalid');
+    if (!session || session.expiresAt < new Date()) {
+      throw AppError.unauthorized('Session expired. Scan the table QR code again.');
+    }
 
     const order = await prisma.order.findFirst({
       where: { 
