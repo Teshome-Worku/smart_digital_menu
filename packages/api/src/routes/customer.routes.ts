@@ -11,7 +11,9 @@ const router = Router();
 
 // ─── Constants ───────────────────────────────────────────
 const SESSION_COOKIE_NAME = 'sdm_session';
-const SESSION_DURATION_HOURS = 4;
+// A browser session is intentionally opaque and short-lived. It is renewed only
+// when the same valid table QR code is scanned, never from client supplied IDs.
+const SESSION_DURATION_HOURS = 24;
 
 // ─── Helper to clear cookie ──────────────────────────────
 const clearSessionCookie = (res: any) => {
@@ -45,22 +47,28 @@ router.post('/scan', validate(scanSchema), async (req, res, next) => {
       throw AppError.badRequest('This restaurant is currently unavailable.');
     }
 
-    // Generate a secure session token
-    const sessionToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + SESSION_DURATION_HOURS * 60 * 60 * 1000);
 
-    // Create a new session in DB
-    const session = await prisma.customerSession.create({
-      data: {
-        sessionToken,
-        restaurantId: table.restaurantId,
-        tableId: table.id,
-        expiresAt,
-      },
-    });
+    // Reuse only the currently valid session for this exact QR table. This lets
+    // a returning browser see its own orders without exposing another table's.
+    const existingToken = req.cookies[SESSION_COOKIE_NAME];
+    const existing = existingToken
+      ? await prisma.customerSession.findUnique({ where: { sessionToken: existingToken } })
+      : null;
+    const session = existing && existing.restaurantId === table.restaurantId &&
+      existing.tableId === table.id && existing.expiresAt > new Date()
+      ? await prisma.customerSession.update({ where: { id: existing.id }, data: { expiresAt } })
+      : await prisma.customerSession.create({
+          data: {
+            sessionToken: crypto.randomBytes(32).toString('hex'),
+            restaurantId: table.restaurantId,
+            tableId: table.id,
+            expiresAt,
+          },
+        });
 
     // Set the HttpOnly cookie
-    res.cookie(SESSION_COOKIE_NAME, sessionToken, {
+    res.cookie(SESSION_COOKIE_NAME, session.sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

@@ -4,7 +4,25 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import type { OrderDto, OrderStatus } from '@sdm/shared';
+type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+
+type OrderDto = {
+  orderNumber: string | number;
+  status: OrderStatus;
+  createdAt: string;
+  subtotal: number;
+  total: number;
+  items: Array<{
+    id: string;
+    quantity: number;
+    productNameSnapshot: string;
+    unitPriceSnapshot: number;
+    modifiers: Array<{
+      modifierNameSnapshot: string;
+      priceDeltaSnapshot: number;
+    }>;
+  }>;
+};
 
 const STATUS_MESSAGES: Record<OrderStatus, { title: string, subtitle: string, icon: string, color: string }> = {
   PENDING: { title: 'Sending to Kitchen', subtitle: 'Waiting for the kitchen to accept your order.', icon: '📡', color: 'bg-surface-200 text-surface-600' },

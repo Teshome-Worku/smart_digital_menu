@@ -30,7 +30,7 @@ export default function LoginPage() {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('An unexpected error occurred. Please try again.');
+        setError('An unexpected network error occurred. Please try again.');
       }
     } finally {
       setIsLoading(false);

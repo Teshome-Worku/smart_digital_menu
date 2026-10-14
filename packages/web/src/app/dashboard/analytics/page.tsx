@@ -1,16 +1,4 @@
-export default function AnalyticsPage() {
-  return (
-    <div className="flex flex-col items-center justify-center h-[70vh] text-center">
-      <div className="w-24 h-24 bg-dashboard-card rounded-full flex items-center justify-center text-4xl mb-6 shadow-sm border border-dashboard-border">
-        📈
-      </div>
-      <h1 className="text-3xl font-bold text-dashboard-text mb-2">Analytics & Reports</h1>
-      <p className="text-dashboard-muted max-w-md mb-8">
-        Track your revenue, popular menu items, peak hours, and customer trends. This feature is coming soon in Phase 5.
-      </p>
-      <div className="px-4 py-2 bg-primary-500/10 text-primary-400 font-semibold rounded-lg border border-primary-500/20">
-        Coming Soon
-      </div>
-    </div>
-  );
-}
+'use client';
+import {useCallback,useEffect,useState}from'react';import{useAuth}from'@/lib/auth-context';import{api}from'@/lib/api';
+type Data={averageOrderValue:number;totalRevenue:number;byDay:{date:string;orders:number;revenue:number}[];statusDistribution:{status:string;count:number}[];popularProducts:{name:string;quantity:number}[]};
+export default function AnalyticsPage(){const{memberships}=useAuth(),restaurant=memberships[0];const[days,setDays]=useState(30),[data,setData]=useState<Data|null>(null),[error,setError]=useState('');const load=useCallback(async()=>{if(!restaurant)return;try{setError('');setData(await api.get<Data>(`/restaurants/${restaurant.restaurantId}/analytics?days=${days}`))}catch{setError('Could not load analytics.')}},[restaurant,days]);useEffect(()=>{load()},[load]);if(!restaurant)return <p className="text-dashboard-muted">Create a restaurant to view analytics.</p>;return <div className="space-y-6"><div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold text-dashboard-text">Analytics</h1><p className="text-sm text-dashboard-muted">Revenue and averages include completed orders only.</p></div><select value={days} onChange={e=>setDays(Number(e.target.value))} className="rounded-lg border border-dashboard-border bg-dashboard-card p-2 text-dashboard-text"><option value={7}>Last 7 days</option><option value={30}>Last 30 days</option><option value={90}>Last 90 days</option></select></div>{error&&<p className="text-danger">{error}</p>}{!data?<p className="text-dashboard-muted">Loading analytics...</p>:<><div className="grid grid-cols-2 gap-4"><Card label="Completed revenue" value={`$${data.totalRevenue.toFixed(2)}`}/><Card label="Average completed order" value={`$${data.averageOrderValue.toFixed(2)}`}/></div><List title="Orders by day" values={data.byDay.map(x=>`${x.date} — ${x.orders} orders, $${x.revenue.toFixed(2)}`)}/><div className="grid gap-4 md:grid-cols-2"><List title="Popular products" values={data.popularProducts.map(x=>`${x.name} — ${x.quantity}`)}/><List title="Status distribution" values={data.statusDistribution.map(x=>`${x.status} — ${x.count}`)}/></div></>}</div>};function Card({label,value}:{label:string;value:string}){return <div className="rounded-xl border border-dashboard-border bg-dashboard-card p-5"><p className="text-2xl font-bold text-dashboard-text">{value}</p><p className="text-sm text-dashboard-muted">{label}</p></div>}function List({title,values}:{title:string;values:string[]}){return <section className="rounded-xl border border-dashboard-border bg-dashboard-card p-5"><h2 className="font-semibold text-dashboard-text">{title}</h2>{values.length?<ul className="mt-3 space-y-2 text-sm text-dashboard-muted">{values.map(x=><li key={x}>{x}</li>)}</ul>:<p className="mt-3 text-sm text-dashboard-muted">No data yet.</p>}</section>}

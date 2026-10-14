@@ -37,7 +37,7 @@ const refreshSchema = z.object({
 
 router.post(
   '/register',
-  validate(registerSchema),
+  validate(registerSchema),//middleware
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { name, email, password } = req.body;

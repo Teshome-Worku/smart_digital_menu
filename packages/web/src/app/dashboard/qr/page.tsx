@@ -39,18 +39,17 @@ export default function QRCodesPage() {
     window.print();
   };
 
-  // Determine the base URL for the QR code
-  // Prefer NEXT_PUBLIC_APP_URL to guarantee it points to the correct place (like a local IP or prod domain),
-  // fallback to window.location.origin if it's missing (though it shouldn't be).
+  // The public address is explicit because a dashboard is commonly opened on
+  // localhost while the QR code is scanned by another device. Keep this value
+  // aligned with the computer's LAN/hotspot address.
   const getBaseUrl = () => {
     if (process.env.NEXT_PUBLIC_APP_URL) {
-      // Remove trailing slash if present
       return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
     }
     if (typeof window !== 'undefined') {
       return window.location.origin;
     }
-    return 'http://localhost:3000';
+    return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000';
   };
 
   const baseUrl = getBaseUrl();

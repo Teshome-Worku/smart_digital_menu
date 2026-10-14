@@ -5,7 +5,24 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useCustomerSession } from '@/lib/customer-context';
-import type { PublicRestaurantDto, PublicCategoryDto, PublicProductDto } from '@sdm/shared';
+interface PublicRestaurantDto {
+  name: string;
+  coverImageUrl?: string | null;
+  logoUrl?: string | null;
+}
+
+interface PublicCategoryDto {
+  id: string;
+  name: string;
+}
+
+interface PublicProductDto {
+  id: string;
+  name: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  price: number;
+}
 
 interface HomeData {
   restaurant: PublicRestaurantDto;
