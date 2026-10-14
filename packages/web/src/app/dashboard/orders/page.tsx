@@ -61,6 +61,14 @@ export default function DashboardOrdersPage() {
     }
   };
 
+  const confirmCash = async (orderId: string) => {
+    try {
+      await api.post(`/restaurants/${currentRestaurant.restaurantId}/orders/${orderId}/payments/cash-confirm`);
+      toast('Cash payment confirmed.', 'success');
+      fetchOrders();
+    } catch { toast('Could not confirm cash payment.', 'error'); }
+  };
+
   if (isLoading && orders.length === 0) {
     return <div className="p-8 text-dashboard-muted">Loading orders...</div>;
   }
@@ -88,6 +96,7 @@ export default function DashboardOrdersPage() {
           titleColor="text-blue-400"
           actionLabel="Accept & Prepare"
           onAction={(id) => updateStatus(id, 'PREPARING')}
+          onConfirmCash={confirmCash}
         />
 
         {/* Column 2: Preparing */}
@@ -98,6 +107,7 @@ export default function DashboardOrdersPage() {
           titleColor="text-amber-400"
           actionLabel="Mark Ready"
           onAction={(id) => updateStatus(id, 'READY')}
+          onConfirmCash={confirmCash}
         />
 
         {/* Column 3: Ready */}
@@ -108,6 +118,7 @@ export default function DashboardOrdersPage() {
           titleColor="text-green-400"
           actionLabel="Complete"
           onAction={(id) => updateStatus(id, 'COMPLETED')}
+          onConfirmCash={confirmCash}
         />
       </div>
     </div>
@@ -120,7 +131,7 @@ function OrderColumn({
   colorClass, 
   titleColor,
   actionLabel, 
-  onAction 
+  onAction, onConfirmCash
 }: { 
   title: string; 
   orders: OrderDto[]; 
@@ -128,6 +139,7 @@ function OrderColumn({
   titleColor: string;
   actionLabel: string; 
   onAction: (id: string) => void; 
+  onConfirmCash: (id: string) => void;
 }) {
   return (
     <div className={`flex flex-col rounded-2xl border ${colorClass} overflow-hidden h-full`}>
@@ -193,10 +205,9 @@ function OrderColumn({
 
               <div className="pt-3 border-t border-dashboard-border flex justify-between items-center">
                 <div className="font-bold text-dashboard-text">${order.total.toFixed(2)}</div>
-                <Button onClick={() => onAction(order.id)} size="sm" className="h-8 text-xs px-4">
-                  {actionLabel}
-                </Button>
+                <div className="flex gap-2"><Button onClick={() => onAction(order.id)} size="sm" className="h-8 text-xs px-4">{actionLabel}</Button>{order.payments?.[0]?.method === 'CASH' && order.payments[0].status === 'PENDING' && <Button onClick={() => onConfirmCash(order.id)} size="sm" className="h-8 text-xs px-3">Confirm cash</Button>}</div>
               </div>
+              {order.payments?.[0] && <p className="mt-2 text-xs text-dashboard-muted">Payment: {order.payments[0].method} · {order.payments[0].status}</p>}
             </div>
           ))
         )}

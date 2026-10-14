@@ -8,6 +8,7 @@ import healthRouter from './routes/health';
 import authRouter from './routes/auth';
 import restaurantRouter from './routes/restaurants';
 import customerRouter from './routes/customer.routes';
+import paymentsRouter from './routes/payments.routes';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/v1', healthRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/restaurants', restaurantRouter);
 app.use('/api/v1/customer', customerRouter);
+app.use('/api/v1', paymentsRouter);
 
 // ─── Error Handler ───────────────────────────────────────
 app.use(errorHandler);

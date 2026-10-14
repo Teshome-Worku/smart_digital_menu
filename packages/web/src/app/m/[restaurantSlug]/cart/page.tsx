@@ -18,6 +18,7 @@ export default function CustomerCartPage() {
   const { items, getSubtotal, updateQuantity, removeItem, clearCart, restaurantId: cartRestaurantId } = useCartStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CHAPA'>('CASH');
 
   // Protect against cart from another restaurant
   if (items.length > 0 && cartRestaurantId !== restaurantSlug) {
@@ -56,13 +57,20 @@ export default function CustomerCartPage() {
           quantity: item.quantity,
           modifiers: item.modifiers.map(m => ({ modifierId: m.modifierId }))
         })),
-        notes: notes || undefined
+        notes: notes || undefined,
+        paymentMethod,
       };
 
       const order = await api.post<OrderDto>('/customer/orders', payload);
       
+      if (paymentMethod === 'CHAPA') {
+        const checkout = await api.post<{ checkoutUrl: string }>(`/customer/orders/${order.id}/payments/chapa`);
+        clearCart();
+        window.location.assign(checkout.checkoutUrl);
+        return;
+      }
       clearCart();
-      toast('Order sent to the kitchen!', 'success');
+      toast('Cash order sent. Pay at the counter when prompted.', 'success');
       router.push(`/m/${restaurantSlug}/order/${order.id}`);
       
     } catch (err: any) {
@@ -137,6 +145,12 @@ export default function CustomerCartPage() {
           />
         </div>
         
+        <div className="bg-white rounded-2xl border border-surface-200 p-4 shadow-sm">
+          <p className="text-sm font-bold text-surface-900">Payment method</p>
+          <label className="mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3"><input type="radio" checked={paymentMethod === 'CASH'} onChange={() => setPaymentMethod('CASH')} /><span><strong>Cash / pay at counter</strong><small className="block text-surface-500">Staff will confirm payment when received.</small></span></label>
+          <label className="mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3"><input type="radio" checked={paymentMethod === 'CHAPA'} onChange={() => setPaymentMethod('CHAPA')} /><span><strong>Online payment with Chapa</strong><small className="block text-surface-500">Secure hosted checkout in test mode.</small></span></label>
+        </div>
+
         {/* Receipt Summary */}
         <div className="bg-white rounded-2xl border border-surface-200 p-4 space-y-3 shadow-sm">
           <div className="flex justify-between text-sm text-surface-600">

@@ -12,6 +12,12 @@ type OrderDto = {
   createdAt: string;
   subtotal: number;
   total: number;
+  payments?: Array<{
+    method: 'CASH' | 'CHAPA';
+    status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
+    amount: number;
+    currency: string;
+  }>;
   items: Array<{
     id: string;
     quantity: number;
@@ -96,6 +102,7 @@ export default function CustomerOrderPage() {
   }
 
   const currentStatus = STATUS_MESSAGES[order.status];
+  const payment = order.payments?.[0];
 
   return (
     <div className="min-h-screen bg-surface-50 pb-24">
@@ -152,6 +159,12 @@ export default function CustomerOrderPage() {
         </div>
 
         {/* Order Details */}
+        {payment && (
+          <div className="bg-white rounded-2xl border border-surface-200 p-4 shadow-sm">
+            <div className="flex justify-between text-sm"><span className="font-bold text-surface-900">Payment</span><span className={payment.status === 'PAID' ? 'font-semibold text-green-600' : 'font-semibold text-amber-600'}>{payment.status}</span></div>
+            <p className="mt-1 text-sm text-surface-500">{payment.method === 'CASH' ? 'Pay at the counter. Staff will confirm receipt.' : 'Chapa online payment (server verified).'}</p>
+          </div>
+        )}
         <div className="bg-white rounded-2xl border border-surface-200 overflow-hidden shadow-sm">
           <div className="p-4 border-b border-surface-100 bg-surface-50 flex justify-between items-center">
             <h3 className="font-bold text-surface-900">Receipt</h3>

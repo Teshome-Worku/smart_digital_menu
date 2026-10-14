@@ -45,7 +45,7 @@ router.get('/', allowRead, validate(getOrdersQuerySchema, 'query'), async (req, 
         table: true,
         items: {
           include: { modifiers: true }
-        }
+        }, payments: true
       }
     });
 
@@ -76,7 +76,7 @@ router.get('/', allowRead, validate(getOrdersQuerySchema, 'query'), async (req, 
           modifierNameSnapshot: m.modifierNameSnapshot,
           priceDeltaSnapshot: m.priceDeltaSnapshot
         }))
-      }))
+      })), payments: o.payments
     }));
 
     sendSuccess(res, mappedOrders);
@@ -124,7 +124,7 @@ router.patch('/:id/status', allowWrite, validate(updateStatusSchema), async (req
       data: { status },
       include: {
         table: true,
-        items: { include: { modifiers: true } }
+        items: { include: { modifiers: true } }, payments: true
       }
     });
 

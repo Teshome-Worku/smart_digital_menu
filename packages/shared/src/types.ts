@@ -218,7 +218,10 @@ export interface CreateOrderItemRequest {
 export interface CreateOrderRequest {
   items: CreateOrderItemRequest[];
   notes?: string;
+  paymentMethod?: 'CASH' | 'CHAPA';
 }
+
+export interface PaymentDto { id:string; method:'CASH'|'CHAPA'; status:'PENDING'|'PAID'|'FAILED'|'CANCELLED'|'REFUNDED'; amount:number; currency:string; merchantReference:string; paidAt?:string|null; createdAt:string; }
 
 // Order View DTOs
 export interface OrderItemModifierDto {
@@ -251,6 +254,7 @@ export interface OrderDto {
   createdAt: string;
   updatedAt: string;
   items: OrderItemDto[];
+  payments?: PaymentDto[];
   tableName?: string; // Enhanced field for dashboard
 }
 

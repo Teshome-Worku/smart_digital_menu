@@ -289,7 +289,8 @@ const createOrderSchema = z.object({
       modifierId: z.string()
     })).max(20).default([])
   })).min(1).max(50),
-  notes: z.string().max(1000).optional()
+  notes: z.string().max(1000).optional(),
+  paymentMethod: z.enum(['CASH', 'CHAPA']).default('CASH'),
 });
 
 router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
@@ -306,7 +307,7 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
       throw AppError.unauthorized('Session expired or invalid.');
     }
 
-    const { items, notes } = req.body;
+    const { items, notes, paymentMethod } = req.body;
 
     // We must calculate the price entirely on the backend to prevent tampering.
     let subtotal = 0;
@@ -396,6 +397,11 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
           subtotal,
           total: subtotal, // Assuming no tax/fees for now
           notes,
+          payments: { create: {
+            provider: paymentMethod === 'CHAPA' ? 'CHAPA' : 'CASH', method: paymentMethod,
+            status: 'PENDING', amount: subtotal, currency: session.restaurant.currency,
+            merchantReference: `sdm-${paymentMethod.toLowerCase()}-${crypto.randomUUID()}`, isTest: true,
+          } },
           items: {
             create: orderItemsData
           }
@@ -403,7 +409,7 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
         include: {
           items: {
             include: { modifiers: true }
-          }
+          }, payments: true
         }
       });
     });
@@ -433,7 +439,7 @@ router.get('/orders', async (req, res, next) => {
       where: { customerSessionId: session.id },
       orderBy: { createdAt: 'desc' },
       take: 20,
-      include: { items: { include: { modifiers: true } } },
+      include: { items: { include: { modifiers: true } }, payments: true },
     });
 
     const filteredOrders = orderNumber
@@ -468,7 +474,7 @@ router.get('/orders/:id', async (req, res, next) => {
       include: {
         items: {
           include: { modifiers: true }
-        }
+        }, payments: true
       }
     });
 

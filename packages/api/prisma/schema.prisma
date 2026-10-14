@@ -31,6 +31,19 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum PaymentMethod {
+  CASH
+  CHAPA
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
 // ─── Core Identity ───────────────────────────────────────
 
 model User {
@@ -252,11 +265,35 @@ model Order {
   table           RestaurantTable @relation(fields: [tableId], references: [id])
   customerSession CustomerSession @relation(fields: [customerSessionId], references: [id])
   items           OrderItem[]
+  payments        Payment[]
 
   @@index([restaurantId])
   @@index([tableId])
   @@index([customerSessionId])
   @@map("orders")
+}
+
+model Payment {
+  id                   String        @id @default(cuid())
+  orderId              String
+  provider             String
+  method               PaymentMethod
+  status               PaymentStatus @default(PENDING)
+  merchantReference    String        @unique
+  providerReference    String?
+  amount               Float
+  currency             String
+  isTest               Boolean       @default(true)
+  paidAt               DateTime?
+  confirmedByUserId    String?
+  confirmedAt          DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  @@index([orderId])
+  @@index([status])
+  @@map("payments")
 }
 
 model OrderItem {
