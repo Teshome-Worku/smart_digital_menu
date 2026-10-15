@@ -59,13 +59,13 @@ router.post('/scan', validate(scanSchema), async (req, res, next) => {
       existing.tableId === table.id && existing.expiresAt > new Date()
       ? await prisma.customerSession.update({ where: { id: existing.id }, data: { expiresAt } })
       : await prisma.customerSession.create({
-          data: {
-            sessionToken: crypto.randomBytes(32).toString('hex'),
-            restaurantId: table.restaurantId,
-            tableId: table.id,
-            expiresAt,
-          },
-        });
+        data: {
+          sessionToken: crypto.randomBytes(32).toString('hex'),
+          restaurantId: table.restaurantId,
+          tableId: table.id,
+          expiresAt,
+        },
+      });
 
     // Set the HttpOnly cookie
     res.cookie(SESSION_COOKIE_NAME, session.sessionToken, {
@@ -307,7 +307,7 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
       throw AppError.unauthorized('Session expired or invalid.');
     }
 
-    const { items, notes, paymentMethod } = req.body;
+    const { items, notes, paymentMethod } = req.body;//the request comes from the frontend with the items, notes, and payment method selected by the user
 
     // We must calculate the price entirely on the backend to prevent tampering.
     let subtotal = 0;
@@ -368,7 +368,7 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
       }
 
       subtotal += itemTotal * item.quantity;
-      
+
       orderItemsData.push({
         productId: dbProduct.id,
         productNameSnapshot: dbProduct.name,
@@ -397,11 +397,13 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
           subtotal,
           total: subtotal, // Assuming no tax/fees for now
           notes,
-          payments: { create: {
-            provider: paymentMethod === 'CHAPA' ? 'CHAPA' : 'CASH', method: paymentMethod,
-            status: 'PENDING', amount: subtotal, currency: session.restaurant.currency,
-            merchantReference: `sdm-${paymentMethod.toLowerCase()}-${crypto.randomUUID()}`, isTest: true,
-          } },
+          payments: {
+            create: {
+              provider: paymentMethod === 'CHAPA' ? 'CHAPA' : 'CASH', method: paymentMethod,
+              status: 'PENDING', amount: subtotal, currency: session.restaurant.currency,
+              merchantReference: `sdm-${paymentMethod.toLowerCase()}-${crypto.randomUUID()}`, isTest: true,
+            }
+          },
           items: {
             create: orderItemsData
           }
@@ -467,9 +469,9 @@ router.get('/orders/:id', async (req, res, next) => {
     }
 
     const order = await prisma.order.findFirst({
-      where: { 
+      where: {
         id: req.params.id,
-        customerSessionId: session.id 
+        customerSessionId: session.id
       },
       include: {
         items: {

@@ -62,7 +62,7 @@ export default function CustomerCartPage() {
       };
 
       const order = await api.post<OrderDto>('/customer/orders', payload);
-      
+      // chapa integration: if the user selected chapa, we need to redirect them to the chapa checkout page
       if (paymentMethod === 'CHAPA') {
         const checkout = await api.post<{ checkoutUrl: string }>(`/customer/orders/${order.id}/payments/chapa`);
         clearCart();
@@ -72,7 +72,7 @@ export default function CustomerCartPage() {
       clearCart();
       toast('Cash order sent. Pay at the counter when prompted.', 'success');
       router.push(`/m/${restaurantSlug}/order/${order.id}`);
-      
+
     } catch (err: any) {
       toast(err.message || 'Failed to submit order', 'error');
     } finally {
@@ -103,7 +103,7 @@ export default function CustomerCartPage() {
                     <h3 className="font-bold text-surface-900 text-sm leading-tight">{item.name}</h3>
                     <span className="font-bold text-surface-900 text-sm shrink-0">${lineTotal.toFixed(2)}</span>
                   </div>
-                  
+
                   {item.modifiers.length > 0 && (
                     <div className="text-xs text-surface-500 mb-2 leading-relaxed">
                       {item.modifiers.map(m => m.name).join(', ')}
@@ -112,14 +112,14 @@ export default function CustomerCartPage() {
 
                   <div className="flex items-center gap-3 mt-3">
                     <div className="flex items-center bg-surface-100 rounded-lg border border-surface-200 h-8">
-                      <button 
+                      <button
                         onClick={() => item.quantity === 1 ? removeItem(item.id) : updateQuantity(item.id, -1)}
                         className="w-8 h-full flex items-center justify-center text-surface-600 hover:bg-surface-200 transition-colors"
                       >
                         {item.quantity === 1 ? '🗑️' : '-'}
                       </button>
                       <span className="w-6 text-center text-xs font-semibold text-surface-900">{item.quantity}</span>
-                      <button 
+                      <button
                         onClick={() => updateQuantity(item.id, 1)}
                         className="w-8 h-full flex items-center justify-center text-surface-600 hover:bg-surface-200 transition-colors"
                       >
@@ -136,7 +136,7 @@ export default function CustomerCartPage() {
         {/* Order Notes */}
         <div className="bg-white rounded-2xl border border-surface-200 p-4 shadow-sm">
           <label className="block text-sm font-bold text-surface-900 mb-2">Add a note (optional)</label>
-          <textarea 
+          <textarea
             className="w-full px-3 py-2 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-none"
             rows={2}
             placeholder="e.g. No onions please"
@@ -144,7 +144,7 @@ export default function CustomerCartPage() {
             onChange={(e) => setNotes(e.target.value)}
           />
         </div>
-        
+
         <div className="bg-white rounded-2xl border border-surface-200 p-4 shadow-sm">
           <p className="text-sm font-bold text-surface-900">Payment method</p>
           <label className="mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3"><input type="radio" checked={paymentMethod === 'CASH'} onChange={() => setPaymentMethod('CASH')} /><span><strong>Cash / pay at counter</strong><small className="block text-surface-500">Staff will confirm payment when received.</small></span></label>
@@ -166,7 +166,7 @@ export default function CustomerCartPage() {
       </div>
 
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-surface-200 p-4 max-w-md mx-auto shadow-[0_-4px_16px_rgba(0,0,0,0.05)] z-40">
-        <Button 
+        <Button
           className="w-full h-12 text-base font-semibold shadow-sm"
           isLoading={isSubmitting}
           onClick={handleCheckout}
