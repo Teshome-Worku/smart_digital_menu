@@ -6,7 +6,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
-  PORT: parseInt(process.env.API_PORT || '4000', 10),
+  PORT: parseInt(process.env.PORT || process.env.API_PORT || '4000', 10),
   DATABASE_URL: process.env.DATABASE_URL || '',
 
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'dev-access-secret',
