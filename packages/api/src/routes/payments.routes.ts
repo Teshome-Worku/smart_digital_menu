@@ -19,7 +19,13 @@ async function verifyAndApply(reference: string) {
   if (payment.method !== 'CHAPA' || payment.status === 'PAID') return payment;
   if (!chapaKey()) throw AppError.badRequest('Online payment is not configured. Choose cash or ask the restaurant to configure Chapa test mode.');
 
-  const result = await fetch(`${CHAPA_URL}/{reference}/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${chapaKey()}` } });
+  const result = await fetch(`${CHAPA_URL}/{reference}/verify/${encodeURIComponent(reference)}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${chapaKey()}`
+    }
+  });
   if (!result.ok) return payment;
 
   const body: any = await result.json();
@@ -30,7 +36,8 @@ async function verifyAndApply(reference: string) {
     where: { id: payment.id },
     data: {
       status: 'PAID',
-      providerReference: data.reference ?? null, paidAt: new Date()
+      providerReference: data.reference ?? null,
+      paidAt: new Date()
     }
   });
 }
@@ -98,11 +105,26 @@ router.post('/payments/chapa/webhook', async (req, res, next) => {
     const secret = process.env.CHAPA_WEBHOOK_SECRET;
     if (!secret) throw AppError.unauthorized('Webhook is not configured');
     const payload = JSON.stringify(req.body);
-    const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-    const signature = String(req.headers['x-chapa-signature'] || req.headers['chapa-signature'] || '');
-    if (!signature || signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) throw AppError.unauthorized('Invalid webhook signature');
+    const expected = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
+
+    const signature = String(
+      req.headers['x-chapa-signature'] ||
+      req.headers['chapa-signature'] || '');
+    if (
+      !signature ||
+      signature.length !== expected.length ||
+      !crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expected)
+      )
+    ) throw AppError.unauthorized('Invalid webhook signature');
+
     const ref = req.body?.tx_ref || req.body?.data?.tx_ref;
-    if (ref) await verifyAndApply(String(ref));
+    if (ref)
+      await verifyAndApply(String(ref));
     sendSuccess(res, { received: true });
   } catch (err) { next(err); }
 });
