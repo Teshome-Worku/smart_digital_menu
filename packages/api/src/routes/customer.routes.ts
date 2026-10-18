@@ -314,7 +314,7 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
       if (session.restaurant.currency !== 'ETB') {
         throw AppError.badRequest('Chapa online payment requires the restaurant currency to be ETB. Choose cash or update the restaurant currency.');
       }
-      const callbackUrl = process.env.CHAPA_CALLBACK_URL || '';
+      const callbackUrl = (process.env.CHAPA_CALLBACK_URL || '').trim();
       let isValidCallback = false;
       try {
         const parsedCallback = new URL(callbackUrl);

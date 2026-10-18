@@ -10,7 +10,7 @@ const router = Router();
 // const CHAPA_URL = 'https://api.chapa.co/v1';
 const CHAPA_URL = 'https://api.chapa.global/v2';// The Chapa API URL latest version as of 2024-06-10. The previous URL (api.chapa.co) is deprecated and may not work in the future. Use this new URL for all Chapa API requests.
 const chapaKey = () => process.env.CHAPA_TEST_SECRET_KEY || '';
-const publicAppUrl = () => process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '';
+const publicAppUrl = () => (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '').trim();
 const toChapaCents = (amount: number) => Math.round(amount * 100);
 
 async function verifyAndApply(reference: string) {
@@ -67,7 +67,7 @@ router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) =
     if (!chapaKey() || !publicAppUrl()) throw AppError.badRequest('Chapa test mode is not configured for this restaurant.');
     if (payment.currency !== 'ETB') throw AppError.badRequest('Chapa checkout currently requires the restaurant currency to be ETB.');
 
-    const callback = process.env.CHAPA_CALLBACK_URL || '';
+    const callback = (process.env.CHAPA_CALLBACK_URL || '').trim();
     let parsedCallback: URL;
     try {
       parsedCallback = new URL(callback);
