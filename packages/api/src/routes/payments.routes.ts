@@ -11,6 +11,7 @@ const router = Router();
 const CHAPA_URL = 'https://api.chapa.global/v2';// The Chapa API URL latest version as of 2024-06-10. The previous URL (api.chapa.co) is deprecated and may not work in the future. Use this new URL for all Chapa API requests.
 const chapaKey = () => process.env.CHAPA_TEST_SECRET_KEY || '';
 const publicAppUrl = () => process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '';
+const toChapaCents = (amount: number) => Math.round(amount * 100);
 
 async function verifyAndApply(reference: string) {
   const payment = await prisma.payment.findUnique({ where: { merchantReference: reference }, include: { order: true } });
@@ -30,7 +31,14 @@ async function verifyAndApply(reference: string) {
 
   const body: any = await result.json();
   const data = body.data;
-  const paid = body.status === 'success' && data?.status === 'success' && data?.tx_ref === reference && Number(data?.amount) === payment.amount && data?.currency === payment.currency && data?.mode === 'test';
+  const expectedAmountInCents = toChapaCents(payment.amount);
+  const providerAmount = Number(data?.amount);
+  const paid = body.status === 'success' &&
+    data?.status === 'success' &&
+    data?.tx_ref === reference &&
+    (providerAmount === expectedAmountInCents || providerAmount === payment.amount) &&
+    data?.currency === payment.currency &&
+    data?.mode === 'test';
   if (!paid) return payment;
   return prisma.payment.update({
     where: { id: payment.id },
@@ -66,7 +74,7 @@ router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) =
         method: 'POST',
         headers: { Authorization: `Bearer ${chapaKey()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: String(payment.amount),
+          amount: toChapaCents(payment.amount),
           currency: payment.currency,
           tx_ref: payment.merchantReference,
           callback_url: callback,
