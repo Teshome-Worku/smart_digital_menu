@@ -8,6 +8,8 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import type { CreateOrderRequest, OrderDto } from '@sdm/shared';
+import { useCustomerSession } from '@/lib/customer-context';
+import { formatPrice } from '@/lib/utils';
 
 export default function CustomerCartPage() {
   const params = useParams();
@@ -16,6 +18,7 @@ export default function CustomerCartPage() {
   const restaurantSlug = params.restaurantSlug as string;
 
   const { items, getSubtotal, updateQuantity, removeItem, clearCart, restaurantId: cartRestaurantId } = useCartStore();
+  const { session } = useCustomerSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CHAPA'>('CASH');
@@ -46,9 +49,15 @@ export default function CustomerCartPage() {
   }
 
   const subtotal = getSubtotal();
+  const currency = session?.currency || 'USD';
+  const chapaAvailable = currency === 'ETB';
 
   const handleCheckout = async () => {
     try {
+      if (paymentMethod === 'CHAPA' && !chapaAvailable) {
+        toast('Chapa online payment is available only when the restaurant currency is ETB. Choose cash.', 'error');
+        return;
+      }
       setIsSubmitting(true);
 
       const payload: CreateOrderRequest = {
@@ -101,7 +110,7 @@ export default function CustomerCartPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start gap-2 mb-1">
                     <h3 className="font-bold text-surface-900 text-sm leading-tight">{item.name}</h3>
-                    <span className="font-bold text-surface-900 text-sm shrink-0">${lineTotal.toFixed(2)}</span>
+                    <span className="font-bold text-surface-900 text-sm shrink-0">{formatPrice(lineTotal, currency)}</span>
                   </div>
 
                   {item.modifiers.length > 0 && (
@@ -148,19 +157,27 @@ export default function CustomerCartPage() {
         <div className="bg-white rounded-2xl border border-surface-200 p-4 shadow-sm">
           <p className="text-sm font-bold text-surface-900">Payment method</p>
           <label className="mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3"><input type="radio" checked={paymentMethod === 'CASH'} onChange={() => setPaymentMethod('CASH')} /><span><strong>Cash / pay at counter</strong><small className="block text-surface-500">Staff will confirm payment when received.</small></span></label>
-          <label className="mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3"><input type="radio" checked={paymentMethod === 'CHAPA'} onChange={() => setPaymentMethod('CHAPA')} /><span><strong>Online payment with Chapa</strong><small className="block text-surface-500">Secure hosted checkout in test mode.</small></span></label>
+          <label className={`mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3 ${!chapaAvailable ? 'opacity-60' : ''}`}>
+            <input type="radio" checked={paymentMethod === 'CHAPA'} onChange={() => setPaymentMethod('CHAPA')} disabled={!chapaAvailable} />
+            <span>
+              <strong>Online payment with Chapa</strong>
+              <small className="block text-surface-500">
+                {chapaAvailable ? 'Secure hosted checkout in test mode.' : `Unavailable: restaurant currency is ${currency}. Chapa requires ETB.`}
+              </small>
+            </span>
+          </label>
         </div>
 
         {/* Receipt Summary */}
         <div className="bg-white rounded-2xl border border-surface-200 p-4 space-y-3 shadow-sm">
           <div className="flex justify-between text-sm text-surface-600">
             <span>Subtotal</span>
-            <span>${subtotal.toFixed(2)}</span>
+            <span>{formatPrice(subtotal, currency)}</span>
           </div>
           {/* Tax/fees could go here later */}
           <div className="border-t border-surface-100 pt-3 flex justify-between font-bold text-lg text-surface-900">
             <span>Total</span>
-            <span>${subtotal.toFixed(2)}</span>
+            <span>{formatPrice(subtotal, currency)}</span>
           </div>
         </div>
       </div>
@@ -171,7 +188,7 @@ export default function CustomerCartPage() {
           isLoading={isSubmitting}
           onClick={handleCheckout}
         >
-          Submit Order • ${subtotal.toFixed(2)}
+          Submit Order • {formatPrice(subtotal, currency)}
         </Button>
       </div>
     </div>

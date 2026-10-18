@@ -179,6 +179,7 @@ export interface CustomerSessionDto {
   tableName: string;
   tableNumber: number;
   restaurantSlug: string;
+  currency: string;
   expiresAt: string;
 }
 

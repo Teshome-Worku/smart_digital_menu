@@ -111,6 +111,7 @@ router.get('/session', async (req, res, next) => {
       tableName: session.table.name,
       tableNumber: session.table.number,
       expiresAt: session.expiresAt.toISOString(),
+      currency: session.restaurant.currency,
     };
 
     sendSuccess(res, sessionDto);
@@ -308,6 +309,15 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
     }
 
     const { items, notes, paymentMethod } = req.body;//the request comes from the frontend with the items, notes, and payment method selected by the user
+
+    if (paymentMethod === 'CHAPA') {
+      if (session.restaurant.currency !== 'ETB') {
+        throw AppError.badRequest('Chapa online payment requires the restaurant currency to be ETB. Choose cash or update the restaurant currency.');
+      }
+      if (!process.env.CHAPA_TEST_SECRET_KEY || !(process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL)) {
+        throw AppError.badRequest('Chapa test mode is not configured for this restaurant. Choose cash or configure Chapa first.');
+      }
+    }
 
     // We must calculate the price entirely on the backend to prevent tampering.
     let subtotal = 0;
