@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCartStore } from '@/lib/store/cartStore';
@@ -20,6 +20,7 @@ export default function CustomerCartPage() {
   const { items, getSubtotal, updateQuantity, removeItem, clearCart, restaurantId: cartRestaurantId } = useCartStore();
   const { session } = useCustomerSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionInProgress = useRef(false);
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CHAPA'>('CASH');
 
@@ -53,6 +54,8 @@ export default function CustomerCartPage() {
   const chapaAvailable = currency === 'ETB';
 
   const handleCheckout = async () => {
+    if (submissionInProgress.current) return;
+    submissionInProgress.current = true;
     try {
       if (paymentMethod === 'CHAPA' && !chapaAvailable) {
         toast('Chapa online payment is available only when the restaurant currency is ETB. Choose cash.', 'error');
@@ -85,6 +88,7 @@ export default function CustomerCartPage() {
     } catch (err: any) {
       toast(err.message || 'Failed to submit order', 'error');
     } finally {
+      submissionInProgress.current = false;
       setIsSubmitting(false);
     }
   };

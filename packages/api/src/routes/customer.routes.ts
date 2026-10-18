@@ -314,7 +314,16 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
       if (session.restaurant.currency !== 'ETB') {
         throw AppError.badRequest('Chapa online payment requires the restaurant currency to be ETB. Choose cash or update the restaurant currency.');
       }
-      if (!process.env.CHAPA_TEST_SECRET_KEY || !(process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL)) {
+      const callbackUrl = process.env.CHAPA_CALLBACK_URL || '';
+      let isValidCallback = false;
+      try {
+        const parsedCallback = new URL(callbackUrl);
+        isValidCallback = parsedCallback.protocol === 'https:' &&
+          parsedCallback.pathname === '/api/v1/payments/chapa/callback';
+      } catch {
+        isValidCallback = false;
+      }
+      if (!process.env.CHAPA_TEST_SECRET_KEY || !(process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL) || !isValidCallback) {
         throw AppError.badRequest('Chapa test mode is not configured for this restaurant. Choose cash or configure Chapa first.');
       }
     }

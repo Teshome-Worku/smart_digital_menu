@@ -52,12 +52,14 @@ async function verifyAndApply(reference: string) {
 
 // Customer starts hosted checkout only for their own session's order.
 router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) => {
+  let createdOrderId: string | null = null;
   try {
     const token = req.cookies.sdm_session; if (!token) throw AppError.unauthorized('No active session');
     const orderId = req.params.orderId;
     if (typeof orderId !== 'string') throw AppError.badRequest('Invalid order ID');
     const order = await prisma.order.findFirst({ where: { id: orderId, customerSession: { sessionToken: token, expiresAt: { gt: new Date() } } }, include: { payments: true, restaurant: { select: { slug: true } } } });
     if (!order) throw AppError.notFound('Order not found');
+    createdOrderId = order.id;
 
     const payment = order.payments.find(p => p.method === 'CHAPA');
     if (!payment) throw AppError.badRequest('This order was placed for cash payment.');
@@ -65,7 +67,16 @@ router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) =
     if (!chapaKey() || !publicAppUrl()) throw AppError.badRequest('Chapa test mode is not configured for this restaurant.');
     if (payment.currency !== 'ETB') throw AppError.badRequest('Chapa checkout currently requires the restaurant currency to be ETB.');
 
-    const callback = process.env.CHAPA_CALLBACK_URL || `${publicAppUrl().replace(/\/$/, '')}/api/backend/payments/chapa/callback`;//the callback URL is where Chapa will send the payment result after the user completes the payment on their site
+    const callback = process.env.CHAPA_CALLBACK_URL || '';
+    let parsedCallback: URL;
+    try {
+      parsedCallback = new URL(callback);
+    } catch {
+      throw AppError.badRequest('Chapa callback URL is invalid. Configure a public HTTPS callback URL.');
+    }
+    if (parsedCallback.protocol !== 'https:' || parsedCallback.pathname !== '/api/v1/payments/chapa/callback') {
+      throw AppError.badRequest('Chapa callback URL must be a public HTTPS URL ending in /api/v1/payments/chapa/callback.');
+    }
     const returnUrl = `${publicAppUrl().replace(/\/$/, '')}/m/${order.restaurant.slug}/order/${order.id}`;//the return URL is where the user will be redirected after completing the payment on Chapa's site
 
     // Start hosted checkout with Chapa API
@@ -93,7 +104,18 @@ router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) =
       paymentReference: payment.merchantReference
     });
   }
-  catch (err) { next(err); }
+  catch (err) {
+    if (createdOrderId) {
+      await prisma.order.deleteMany({
+        where: {
+          id: createdOrderId,
+          status: 'PENDING',
+          payments: { some: { method: 'CHAPA', status: 'PENDING' } },
+        },
+      });
+    }
+    next(err);
+  }
 });
 
 router.get('/payments/chapa/callback', async (req, res, next) => {
