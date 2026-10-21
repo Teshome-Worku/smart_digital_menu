@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sdm/shared": "*",
+    "@sdm/shared": "file:../shared",
     "next": "^15.3.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
