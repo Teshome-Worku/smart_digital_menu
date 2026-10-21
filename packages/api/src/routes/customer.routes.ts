@@ -315,7 +315,9 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
         throw AppError.badRequest('Chapa online payment requires the restaurant currency to be ETB. Choose cash or update the restaurant currency.');
       }
       const callbackUrl = (process.env.CHAPA_CALLBACK_URL || '').trim();
+      const publicAppUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '').trim();
       let isValidCallback = false;
+      let isValidReturnUrl = false;
       try {
         const parsedCallback = new URL(callbackUrl);
         isValidCallback = parsedCallback.protocol === 'https:' &&
@@ -323,8 +325,17 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
       } catch {
         isValidCallback = false;
       }
-      if (!process.env.CHAPA_TEST_SECRET_KEY || !(process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL) || !isValidCallback) {
-        throw AppError.badRequest('Chapa test mode is not configured for this restaurant. Choose cash or configure Chapa first.');
+      try {
+        const parsedReturnUrl = new URL(publicAppUrl);
+        isValidReturnUrl = parsedReturnUrl.protocol === 'https:';
+      } catch {
+        isValidReturnUrl = false;
+      }
+      if (!process.env.CHAPA_TEST_SECRET_KEY || !isValidCallback) {
+        throw AppError.badRequest('Chapa callback URL must be a public HTTPS URL ending in /api/v1/payments/chapa/callback.');
+      }
+      if (!isValidReturnUrl) {
+        throw AppError.badRequest('Chapa return URL must be a public HTTPS frontend URL. Deploy the frontend and set NEXT_PUBLIC_APP_URL before using online payment.');
       }
     }
 

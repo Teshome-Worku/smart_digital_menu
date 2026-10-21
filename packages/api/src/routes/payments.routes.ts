@@ -64,7 +64,7 @@ router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) =
     const payment = order.payments.find(p => p.method === 'CHAPA');
     if (!payment) throw AppError.badRequest('This order was placed for cash payment.');
     if (payment.status === 'PAID') return sendSuccess(res, { status: payment.status });
-    if (!chapaKey() || !publicAppUrl()) throw AppError.badRequest('Chapa test mode is not configured for this restaurant.');
+    if (!chapaKey()) throw AppError.badRequest('Chapa test mode is not configured for this restaurant.');
     if (payment.currency !== 'ETB') throw AppError.badRequest('Chapa checkout currently requires the restaurant currency to be ETB.');
 
     const callback = (process.env.CHAPA_CALLBACK_URL || '').trim();
@@ -77,7 +77,17 @@ router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) =
     if (parsedCallback.protocol !== 'https:' || parsedCallback.pathname !== '/api/v1/payments/chapa/callback') {
       throw AppError.badRequest('Chapa callback URL must be a public HTTPS URL ending in /api/v1/payments/chapa/callback.');
     }
-    const returnUrl = `${publicAppUrl().replace(/\/$/, '')}/m/${order.restaurant.slug}/order/${order.id}`;//the return URL is where the user will be redirected after completing the payment on Chapa's site
+    const appUrl = publicAppUrl();
+    let parsedAppUrl: URL;
+    try {
+      parsedAppUrl = new URL(appUrl);
+    } catch {
+      throw AppError.badRequest('Chapa return URL is invalid. Configure NEXT_PUBLIC_APP_URL as a public HTTPS frontend URL.');
+    }
+    if (parsedAppUrl.protocol !== 'https:') {
+      throw AppError.badRequest('Chapa return URL must be a public HTTPS frontend URL. Deploy the frontend and set NEXT_PUBLIC_APP_URL before using online payment.');
+    }
+    const returnUrl = `${appUrl.replace(/\/$/, '')}/m/${order.restaurant.slug}/order/${order.id}`;//the return URL is where the user will be redirected after completing the payment on Chapa's site
 
     // Start hosted checkout with Chapa API
     const response = await fetch(`${CHAPA_URL}/payments/hosted`,
