@@ -13,14 +13,24 @@ const chapaKey = () => process.env.CHAPA_TEST_SECRET_KEY || '';
 const publicAppUrl = () => (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '').trim();
 const toChapaCents = (amount: number) => Math.round(amount * 100);
 
-async function verifyAndApply(reference: string) {
-  const payment = await prisma.payment.findUnique({ where: { merchantReference: reference }, include: { order: true } });
+export async function verifyAndApply(reference: string) {
+  const payment = await prisma.payment.findFirst({
+    where: {
+      OR: [
+        { merchantReference: reference },
+        { providerReference: reference }
+      ]
+    },
+    include: { order: true }
+  });
 
   if (!payment) throw AppError.notFound('Payment not found');
   if (payment.method !== 'CHAPA' || payment.status === 'PAID') return payment;
   if (!chapaKey()) throw AppError.badRequest('Online payment is not configured. Choose cash or ask the restaurant to configure Chapa test mode.');
 
-  const result = await fetch(`${CHAPA_URL}/{reference}/verify/${encodeURIComponent(reference)}`, {
+  const verifyToken = payment.providerReference || reference;
+
+  const result = await fetch(`${CHAPA_URL}/payments/${encodeURIComponent(verifyToken)}/verify`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -33,21 +43,28 @@ async function verifyAndApply(reference: string) {
   const data = body.data;
   const expectedAmountInCents = toChapaCents(payment.amount);
   const providerAmount = Number(data?.amount);
-  const paid = body.status === 'success' &&
-    data?.status === 'success' &&
-    data?.tx_ref === reference &&
-    (providerAmount === expectedAmountInCents || providerAmount === payment.amount) &&
-    data?.currency === payment.currency &&
-    data?.mode === 'test';
-  if (!paid) return payment;
-  return prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      status: 'PAID',
-      providerReference: data.reference ?? null,
-      paidAt: new Date()
-    }
-  });
+  const statusUpper = String(data?.status || '').toUpperCase();
+
+  const isSuccess = (body.status === 'success' || body.status === 'SUCCESS') &&
+    (statusUpper === 'SUCCESS' || statusUpper === 'PAID');
+
+  const matchesReference = !data?.merchant_reference ||
+    data?.merchant_reference === payment.merchantReference ||
+    data?.tx_ref === payment.merchantReference;
+
+  const matchesAmount = providerAmount === expectedAmountInCents || providerAmount === payment.amount;
+  const matchesCurrency = !data?.currency || data?.currency === payment.currency;
+
+  if (isSuccess && matchesReference && matchesAmount && matchesCurrency) {
+    return prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'PAID',
+        paidAt: new Date()
+      }
+    });
+  }
+  return payment;
 }
 
 // Customer starts hosted checkout only for their own session's order.
@@ -97,9 +114,15 @@ router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) =
         body: JSON.stringify({
           amount: toChapaCents(payment.amount),
           currency: payment.currency,
+          merchant_reference: payment.merchantReference,
           tx_ref: payment.merchantReference,
           callback_url: callback,
           return_url: returnUrl,
+          meta: {
+            hide_receipt: 'true',
+            order_id: order.id,
+            order_number: String(order.orderNumber)
+          },
           customization: {
             title: 'Smart Digital Menu order',
             description: `Order #${order.orderNumber}`
@@ -109,8 +132,19 @@ router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) =
 
     const body: any = await response.json();
     if (!response.ok || body.status !== 'success' || !body.data?.checkout_url) throw AppError.badRequest(body.message || 'Could not start Chapa checkout.');
+
+    const checkoutUrl: string = body.data.checkout_url;
+    const checkoutToken = checkoutUrl.split('/').pop() || null;
+
+    if (checkoutToken) {
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: { providerReference: checkoutToken }
+      });
+    }
+
     sendSuccess(res, {
-      checkoutUrl: body.data.checkout_url,
+      checkoutUrl,
       paymentReference: payment.merchantReference
     });
   }

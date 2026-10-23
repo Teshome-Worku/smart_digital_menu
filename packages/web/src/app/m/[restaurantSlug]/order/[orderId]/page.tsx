@@ -161,8 +161,23 @@ export default function CustomerOrderPage() {
         {/* Order Details */}
         {payment && (
           <div className="bg-white rounded-2xl border border-surface-200 p-4 shadow-sm">
-            <div className="flex justify-between text-sm"><span className="font-bold text-surface-900">Payment</span><span className={payment.status === 'PAID' ? 'font-semibold text-green-600' : 'font-semibold text-amber-600'}>{payment.status}</span></div>
-            <p className="mt-1 text-sm text-surface-500">{payment.method === 'CASH' ? 'Pay at the counter. Staff will confirm receipt.' : 'Chapa online payment (server verified).'}</p>
+            <div className="flex justify-between text-sm items-center">
+              <span className="font-bold text-surface-900">Payment</span>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                payment.status === 'PAID'
+                  ? 'bg-green-100 text-green-700 border border-green-200'
+                  : 'bg-amber-100 text-amber-700 border border-amber-200'
+              }`}>
+                {payment.method} · {payment.status}
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs text-surface-500">
+              {payment.method === 'CASH'
+                ? 'Pay at the counter. Staff will confirm receipt.'
+                : payment.status === 'PAID'
+                ? 'Online payment verified successfully via Chapa.'
+                : 'Payment pending. Checking confirmation with Chapa...'}
+            </p>
           </div>
         )}
         <div className="bg-white rounded-2xl border border-surface-200 overflow-hidden shadow-sm">
@@ -176,6 +191,8 @@ export default function CustomerOrderPage() {
               const modsTotal = item.modifiers.reduce((s, m) => s + m.priceDeltaSnapshot, 0);
               const unitPrice = item.unitPriceSnapshot + modsTotal;
               const lineTotal = unitPrice * item.quantity;
+              const currency = payment?.currency || 'USD';
+              const formattedLineTotal = currency === 'ETB' ? `${lineTotal.toFixed(2)} ETB` : `$${lineTotal.toFixed(2)}`;
               
               return (
                 <div key={item.id} className="flex justify-between items-start gap-4">
@@ -191,7 +208,7 @@ export default function CustomerOrderPage() {
                     )}
                   </div>
                   <div className="font-semibold text-surface-900 text-sm">
-                    ${lineTotal.toFixed(2)}
+                    {formattedLineTotal}
                   </div>
                 </div>
               );
@@ -201,11 +218,11 @@ export default function CustomerOrderPage() {
           <div className="p-4 bg-surface-50 border-t border-surface-100 space-y-2">
             <div className="flex justify-between text-sm text-surface-600">
               <span>Subtotal</span>
-              <span>${order.subtotal.toFixed(2)}</span>
+              <span>{payment?.currency === 'ETB' ? `${order.subtotal.toFixed(2)} ETB` : `$${order.subtotal.toFixed(2)}`}</span>
             </div>
             <div className="flex justify-between font-bold text-lg text-surface-900 pt-2 border-t border-surface-200">
               <span>Total</span>
-              <span>${order.total.toFixed(2)}</span>
+              <span>{payment?.currency === 'ETB' ? `${order.total.toFixed(2)} ETB` : `$${order.total.toFixed(2)}`}</span>
             </div>
           </div>
         </div>

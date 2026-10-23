@@ -54,14 +54,17 @@ export default function CustomerCartPage() {
   const chapaAvailable = currency === 'ETB';
 
   const handleCheckout = async () => {
-    if (submissionInProgress.current) return;
+    if (submissionInProgress.current || isSubmitting) return;
     submissionInProgress.current = true;
+    setIsSubmitting(true);
+
     try {
       if (paymentMethod === 'CHAPA' && !chapaAvailable) {
         toast('Chapa online payment is available only when the restaurant currency is ETB. Choose cash.', 'error');
+        submissionInProgress.current = false;
+        setIsSubmitting(false);
         return;
       }
-      setIsSubmitting(true);
 
       const payload: CreateOrderRequest = {
         items: items.map(item => ({
@@ -74,22 +77,23 @@ export default function CustomerCartPage() {
       };
 
       const order = await api.post<OrderDto>('/customer/orders', payload);
-      // chapa integration: if the user selected chapa, we need to redirect them to the chapa checkout page
+
       if (paymentMethod === 'CHAPA') {
         const checkout = await api.post<{ checkoutUrl: string }>(`/customer/orders/${order.id}/payments/chapa`);
         clearCart();
+        // Keep isSubmitting true and lock to avoid duplicate order attempts while redirecting
         window.location.assign(checkout.checkoutUrl);
         return;
       }
+
       clearCart();
       toast('Cash order sent. Pay at the counter when prompted.', 'success');
       router.push(`/m/${restaurantSlug}/order/${order.id}`);
 
     } catch (err: any) {
-      toast(err.message || 'Failed to submit order', 'error');
-    } finally {
       submissionInProgress.current = false;
       setIsSubmitting(false);
+      toast(err.message || 'Failed to submit order', 'error');
     }
   };
 

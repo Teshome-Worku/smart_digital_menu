@@ -203,11 +203,48 @@ function OrderColumn({
                 </div>
               )}
 
+              {order.payments?.[0] && (
+                <div className="mb-3">
+                  {order.payments[0].method === 'CHAPA' && order.payments[0].status !== 'PAID' ? (
+                    <div className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-between">
+                      <span>⏳ Awaiting Chapa Payment</span>
+                      <span className="text-[10px] uppercase tracking-wider bg-amber-500/30 px-1.5 py-0.5 rounded">Unpaid</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-xs text-dashboard-muted">
+                      <span>Payment: {order.payments[0].method}</span>
+                      <span className={`px-2 py-0.5 rounded font-semibold ${
+                        order.payments[0].status === 'PAID'
+                          ? 'bg-green-500/15 text-green-400 border border-green-500/30'
+                          : 'bg-surface-700 text-surface-300'
+                      }`}>
+                        {order.payments[0].status}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="pt-3 border-t border-dashboard-border flex justify-between items-center">
-                <div className="font-bold text-dashboard-text">${order.total.toFixed(2)}</div>
-                <div className="flex gap-2"><Button onClick={() => onAction(order.id)} size="sm" className="h-8 text-xs px-4">{actionLabel}</Button>{order.payments?.[0]?.method === 'CASH' && order.payments[0].status === 'PENDING' && <Button onClick={() => onConfirmCash(order.id)} size="sm" className="h-8 text-xs px-3">Confirm cash</Button>}</div>
+                <div className="font-bold text-dashboard-text">
+                  {order.payments?.[0]?.currency === 'ETB' ? `${order.total.toFixed(2)} ETB` : `$${order.total.toFixed(2)}`}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => onAction(order.id)}
+                    size="sm"
+                    className="h-8 text-xs px-4"
+                    disabled={order.payments?.[0]?.method === 'CHAPA' && order.payments[0].status !== 'PAID'}
+                  >
+                    {order.payments?.[0]?.method === 'CHAPA' && order.payments[0].status !== 'PAID'
+                      ? 'Awaiting Payment'
+                      : actionLabel}
+                  </Button>
+                  {order.payments?.[0]?.method === 'CASH' && order.payments[0].status === 'PENDING' && (
+                    <Button onClick={() => onConfirmCash(order.id)} size="sm" className="h-8 text-xs px-3">Confirm cash</Button>
+                  )}
+                </div>
               </div>
-              {order.payments?.[0] && <p className="mt-2 text-xs text-dashboard-muted">Payment: {order.payments[0].method} · {order.payments[0].status}</p>}
             </div>
           ))
         )}

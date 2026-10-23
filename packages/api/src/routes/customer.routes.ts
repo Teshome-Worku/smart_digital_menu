@@ -5,6 +5,7 @@ import { prisma } from '../config/database';
 import { validate } from '../middleware/validate';
 import { AppError } from '../utils/errors';
 import { sendSuccess } from '../utils/apiResponse';
+import { verifyAndApply } from './payments.routes';
 import type { CustomerSessionDto, PublicRestaurantDto, PublicCategoryDto, PublicProductDto } from '@sdm/shared';
 
 const router = Router();
@@ -411,11 +412,37 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
       });
     }
 
+    // Protect against unintentional duplicate submission within 60 seconds from the same session
+    const recentDuplicate = await prisma.order.findFirst({
+      where: {
+        customerSessionId: session.id,
+        createdAt: { gte: new Date(Date.now() - 60000) },
+        status: 'PENDING',
+        payments: {
+          some: {
+            method: paymentMethod,
+            status: 'PENDING'
+          }
+        }
+      },
+      include: {
+        items: {
+          include: { modifiers: true }
+        },
+        payments: true
+      }
+    });
+
+    if (recentDuplicate && Math.abs(recentDuplicate.total - subtotal) < 0.01) {
+      return sendSuccess(res, recentDuplicate);
+    }
+
     // Wrap in transaction to get order number and create safely
     const order = await prisma.$transaction(async (tx) => {
       // Very naive order number generation (Subject to race conditions under extreme load, but fine for MVP)
       const count = await tx.order.count({ where: { restaurantId: session.restaurantId } });
       const orderNumber = count + 1;
+      const merchantReference = `sdm-${crypto.randomBytes(7).toString('hex')}`;
 
       return await tx.order.create({
         data: {
@@ -431,7 +458,7 @@ router.post('/orders', validate(createOrderSchema), async (req, res, next) => {
             create: {
               provider: paymentMethod === 'CHAPA' ? 'CHAPA' : 'CASH', method: paymentMethod,
               status: 'PENDING', amount: subtotal, currency: session.restaurant.currency,
-              merchantReference: `sdm-${paymentMethod.toLowerCase()}-${crypto.randomUUID()}`, isTest: true,
+              merchantReference, isTest: true,
             }
           },
           items: {
@@ -511,6 +538,20 @@ router.get('/orders/:id', async (req, res, next) => {
     });
 
     if (!order) throw AppError.notFound('Order not found');
+
+    // Auto-verify pending Chapa payment if customer is returning to order tracking
+    const pendingChapa = order.payments.find(p => p.method === 'CHAPA' && p.status === 'PENDING');
+    if (pendingChapa) {
+      try {
+        const verified = await verifyAndApply(pendingChapa.merchantReference);
+        if (verified && verified.status === 'PAID') {
+          pendingChapa.status = 'PAID';
+          pendingChapa.paidAt = verified.paidAt;
+        }
+      } catch {
+        // Non-blocking fallback
+      }
+    }
 
     sendSuccess(res, order);
   } catch (err) {
