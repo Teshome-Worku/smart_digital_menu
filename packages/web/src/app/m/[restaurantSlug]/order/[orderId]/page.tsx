@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
@@ -42,12 +42,16 @@ const STATUS_MESSAGES: Record<OrderStatus, { title: string, subtitle: string, ic
 export default function CustomerOrderPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const checkoutUrl = searchParams.get('checkoutUrl');
+
   const restaurantSlug = params.restaurantSlug as string;
   const orderId = params.orderId as string;
 
   const [order, setOrder] = useState<OrderDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [hasOpenedCheckout, setHasOpenedCheckout] = useState(false);
 
   const copyOrderReference = async () => {
     if (!order) return;
@@ -75,13 +79,27 @@ export default function CustomerOrderPage() {
   useEffect(() => {
     fetchOrder();
 
-    // Poll for status updates every 10 seconds
+    // Fast polling (3s) while payment is pending, otherwise every 10s
+    const isPendingPayment = order?.payments?.[0]?.status === 'PENDING';
+    const pollInterval = isPendingPayment ? 3000 : 10000;
     const intervalId = setInterval(() => {
       fetchOrder();
-    }, 10000);
+    }, pollInterval);
 
     return () => clearInterval(intervalId);
-  }, [orderId]);
+  }, [orderId, order?.payments?.[0]?.status]);
+
+  useEffect(() => {
+    if (checkoutUrl && !hasOpenedCheckout && typeof window !== 'undefined') {
+      setHasOpenedCheckout(true);
+      // Attempt opening Chapa in new tab so customer maintains access to order page
+      try {
+        window.open(checkoutUrl, '_blank');
+      } catch {
+        // Fallback to on-screen button
+      }
+    }
+  }, [checkoutUrl, hasOpenedCheckout]);
 
   if (isLoading && !order) {
     return (
@@ -118,6 +136,40 @@ export default function CustomerOrderPage() {
       </div>
 
       <div className="p-4 space-y-4">
+        {/* Chapa Payment Action Card */}
+        {payment?.method === 'CHAPA' && payment.status !== 'PAID' && (
+          <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl p-5 text-center shadow-sm space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-full bg-amber-500/20 flex items-center justify-center text-2xl">
+              💳
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-surface-900">Payment Pending on Chapa</h2>
+              <p className="text-xs text-surface-600 mt-1 max-w-sm mx-auto">
+                Complete your payment on Chapa. Once paid, this screen and the restaurant kitchen will update automatically.
+              </p>
+            </div>
+
+            {checkoutUrl && (
+              <a
+                href={checkoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-full py-3.5 px-4 bg-primary-600 text-white font-bold text-sm rounded-xl shadow-md hover:bg-primary-700 active:scale-[0.99] transition-all"
+              >
+                Pay {payment.currency === 'ETB' ? `${order.total.toFixed(2)} ETB` : `$${order.total.toFixed(2)}`} on Chapa →
+              </a>
+            )}
+
+            <button
+              type="button"
+              onClick={() => fetchOrder()}
+              className="text-xs font-semibold text-primary-600 hover:underline flex items-center justify-center gap-1.5 mx-auto pt-1"
+            >
+              <span>↻ Already paid? Refresh status</span>
+            </button>
+          </div>
+        )}
+
         {/* Status Card */}
         <div className="bg-white rounded-2xl border border-surface-200 p-6 text-center shadow-sm">
           <div className="mb-5 rounded-xl bg-primary-50 border border-primary-100 p-4">

@@ -6,6 +6,7 @@ import { requireTenant, TenantRequest } from '../middleware/tenantContext';
 import { validate } from '../middleware/validate';
 import { AppError } from '../utils/errors';
 import { sendSuccess } from '../utils/apiResponse';
+import { verifyAndApply } from './payments.routes';
 type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
 
 const router = Router({ mergeParams: true });
@@ -48,6 +49,29 @@ router.get('/', allowRead, validate(getOrdersQuerySchema, 'query'), async (req, 
         }, payments: true
       }
     });
+
+    // Auto-verify any pending Chapa payments so dashboard immediately reflects completed payments
+    const pendingChapaOrders = orders.filter(o =>
+      o.payments.some(p => p.method === 'CHAPA' && p.status === 'PENDING')
+    );
+    if (pendingChapaOrders.length > 0) {
+      await Promise.allSettled(
+        pendingChapaOrders.map(async (o) => {
+          const chapaPayment = o.payments.find(p => p.method === 'CHAPA' && p.status === 'PENDING');
+          if (chapaPayment) {
+            try {
+              const verified = await verifyAndApply(chapaPayment.providerReference || chapaPayment.merchantReference);
+              if (verified && verified.status === 'PAID') {
+                chapaPayment.status = 'PAID';
+                chapaPayment.paidAt = verified.paidAt;
+              }
+            } catch {
+              // Ignore individual verification failures
+            }
+          }
+        })
+      );
+    }
 
     // Map to DTO including tableName for the dashboard
     const mappedOrders = orders.map(o => ({
@@ -125,6 +149,43 @@ router.patch('/:id/status', allowWrite, validate(updateStatusSchema), async (req
       include: {
         table: true,
         items: { include: { modifiers: true } }, payments: true
+      }
+    });
+
+    sendSuccess(res, updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /restaurants/:restaurantId/orders/:id/payments/chapa-verify
+ * Explicitly verify a Chapa online payment with Chapa's servers
+ */
+router.post('/:id/payments/chapa-verify', allowWrite, async (req, res, next) => {
+  try {
+    const { restaurantId } = req as TenantRequest;
+    const orderId = req.params.id as string;
+
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, restaurantId },
+      include: { payments: true }
+    });
+
+    if (!order) throw AppError.notFound('Order not found');
+
+    const chapaPayment = order.payments.find(p => p.method === 'CHAPA');
+    if (!chapaPayment) throw AppError.badRequest('Order does not have a Chapa payment');
+
+    const ref = chapaPayment.providerReference || chapaPayment.merchantReference;
+    await verifyAndApply(ref);
+
+    const updated = await prisma.order.findFirst({
+      where: { id: orderId },
+      include: {
+        table: true,
+        items: { include: { modifiers: true } },
+        payments: true
       }
     });
 

@@ -81,8 +81,8 @@ export default function CustomerCartPage() {
       if (paymentMethod === 'CHAPA') {
         const checkout = await api.post<{ checkoutUrl: string }>(`/customer/orders/${order.id}/payments/chapa`);
         clearCart();
-        // Keep isSubmitting true and lock to avoid duplicate order attempts while redirecting
-        window.location.assign(checkout.checkoutUrl);
+        // Route customer directly to their order tracking page with checkout link
+        router.push(`/m/${restaurantSlug}/order/${order.id}?checkoutUrl=${encodeURIComponent(checkout.checkoutUrl)}`);
         return;
       }
 

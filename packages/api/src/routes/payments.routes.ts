@@ -14,7 +14,7 @@ const publicAppUrl = () => (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_U
 const toChapaCents = (amount: number) => Math.round(amount * 100);
 
 export async function verifyAndApply(reference: string) {
-  const payment = await prisma.payment.findFirst({
+  let payment = await prisma.payment.findFirst({
     where: {
       OR: [
         { merchantReference: reference },
@@ -24,7 +24,33 @@ export async function verifyAndApply(reference: string) {
     include: { order: true }
   });
 
-  if (!payment) throw AppError.notFound('Payment not found');
+  // If not found directly, it might be a Chapa transaction reference (e.g. HCipiaIYSreT).
+  // Query Chapa verify endpoint to resolve the merchant_reference.
+  if (!payment && chapaKey()) {
+    try {
+      const directVerify = await fetch(`${CHAPA_URL}/payments/${encodeURIComponent(reference)}/verify`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${chapaKey()}`
+        }
+      });
+      if (directVerify.ok) {
+        const directBody: any = await directVerify.json();
+        const resolvedRef = directBody?.data?.merchant_reference || directBody?.data?.tx_ref;
+        if (resolvedRef) {
+          payment = await prisma.payment.findFirst({
+            where: { merchantReference: resolvedRef },
+            include: { order: true }
+          });
+        }
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  }
+
+  if (!payment) return null;
   if (payment.method !== 'CHAPA' || payment.status === 'PAID') return payment;
   if (!chapaKey()) throw AppError.badRequest('Online payment is not configured. Choose cash or ask the restaurant to configure Chapa test mode.');
 
@@ -119,7 +145,7 @@ router.post('/customer/orders/:orderId/payments/chapa', async (req, res, next) =
           callback_url: callback,
           return_url: returnUrl,
           meta: {
-            hide_receipt: 'true',
+            hide_receipt: true,
             order_id: order.id,
             order_number: String(order.orderNumber)
           },

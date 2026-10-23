@@ -69,6 +69,18 @@ export default function DashboardOrdersPage() {
     } catch { toast('Could not confirm cash payment.', 'error'); }
   };
 
+  const verifyChapa = async (orderId: string) => {
+    if (!currentRestaurant) return;
+    try {
+      toast('Checking payment with Chapa...', 'info');
+      await api.post(`/restaurants/${currentRestaurant.restaurantId}/orders/${orderId}/payments/chapa-verify`);
+      toast('Payment checked with Chapa.', 'success');
+      fetchOrders();
+    } catch (err: any) {
+      toast(err.message || 'Could not verify payment.', 'error');
+    }
+  };
+
   if (isLoading && orders.length === 0) {
     return <div className="p-8 text-dashboard-muted">Loading orders...</div>;
   }
@@ -97,6 +109,7 @@ export default function DashboardOrdersPage() {
           actionLabel="Accept & Prepare"
           onAction={(id) => updateStatus(id, 'PREPARING')}
           onConfirmCash={confirmCash}
+          onVerifyChapa={verifyChapa}
         />
 
         {/* Column 2: Preparing */}
@@ -108,6 +121,7 @@ export default function DashboardOrdersPage() {
           actionLabel="Mark Ready"
           onAction={(id) => updateStatus(id, 'READY')}
           onConfirmCash={confirmCash}
+          onVerifyChapa={verifyChapa}
         />
 
         {/* Column 3: Ready */}
@@ -119,6 +133,7 @@ export default function DashboardOrdersPage() {
           actionLabel="Complete"
           onAction={(id) => updateStatus(id, 'COMPLETED')}
           onConfirmCash={confirmCash}
+          onVerifyChapa={verifyChapa}
         />
       </div>
     </div>
@@ -131,7 +146,7 @@ function OrderColumn({
   colorClass, 
   titleColor,
   actionLabel, 
-  onAction, onConfirmCash
+  onAction, onConfirmCash, onVerifyChapa
 }: { 
   title: string; 
   orders: OrderDto[]; 
@@ -140,6 +155,7 @@ function OrderColumn({
   actionLabel: string; 
   onAction: (id: string) => void; 
   onConfirmCash: (id: string) => void;
+  onVerifyChapa: (id: string) => void;
 }) {
   return (
     <div className={`flex flex-col rounded-2xl border ${colorClass} overflow-hidden h-full`}>
@@ -229,7 +245,17 @@ function OrderColumn({
                 <div className="font-bold text-dashboard-text">
                   {order.payments?.[0]?.currency === 'ETB' ? `${order.total.toFixed(2)} ETB` : `$${order.total.toFixed(2)}`}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  {order.payments?.[0]?.method === 'CHAPA' && order.payments[0].status !== 'PAID' && (
+                    <Button
+                      onClick={() => onVerifyChapa(order.id)}
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs px-2.5 border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
+                    >
+                      ↻ Check Chapa
+                    </Button>
+                  )}
                   <Button
                     onClick={() => onAction(order.id)}
                     size="sm"
