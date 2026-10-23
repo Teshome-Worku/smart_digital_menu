@@ -17,12 +17,18 @@ app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
-      // In development, allow any origin (e.g. localhost or local IP)
-      if (env.NODE_ENV !== 'production') {
+      // In development or server-to-server/testing (no origin), allow
+      if (env.NODE_ENV !== 'production' || !origin) {
         callback(null, true);
         return;
       }
-      callback(null, env.CORS_ORIGIN);
+      const allowed = env.CORS_ORIGIN.replace(/\/$/, '');
+      const incoming = origin.replace(/\/$/, '');
+      if (incoming === allowed) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
     },
     credentials: true,
   }),

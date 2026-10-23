@@ -1,8 +1,14 @@
+import path from 'path';
 import type { NextConfig } from 'next';
+
+const monorepoRoot =
+  typeof __dirname !== 'undefined'
+    ? path.resolve(__dirname, '../../')
+    : path.resolve(process.cwd(), process.cwd().endsWith('web') ? '../..' : '.');
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@sdm/shared'],
-  outputFileTracingRoot: process.cwd(),
+  outputFileTracingRoot: monorepoRoot,
   async rewrites() {
     return [
       {

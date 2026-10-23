@@ -9,9 +9,10 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     return;
   }
 
-  // Log unexpected errors in development
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('[Unhandled Error]', err);
+  // Log unexpected errors on the server for diagnostics (without leaking to client)
+  console.error('[Unhandled Server Error]:', err.message || err);
+  if (process.env.NODE_ENV !== 'production' && err.stack) {
+    console.error(err.stack);
   }
 
   sendError(res, 500, 'INTERNAL_ERROR', 'An unexpected error occurred');

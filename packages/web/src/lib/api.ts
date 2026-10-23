@@ -148,7 +148,7 @@ function getApiBase(): string {
     return '/api/backend';
   }
 
-  return configuredBase;
+  return configuredBase.replace(/\/$/, '');
 }
 
 const API_BASE = getApiBase();

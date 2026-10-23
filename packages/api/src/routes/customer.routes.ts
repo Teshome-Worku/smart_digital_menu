@@ -20,7 +20,7 @@ const clearSessionCookie = (res: any) => {
   res.clearCookie(SESSION_COOKIE_NAME, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   });
 };
 
@@ -71,7 +71,7 @@ router.post('/scan', validate(scanSchema), async (req, res, next) => {
     res.cookie(SESSION_COOKIE_NAME, session.sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       expires: expiresAt,
     });
 
